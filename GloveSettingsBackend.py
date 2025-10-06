@@ -1,5 +1,6 @@
 import sys
 import math
+import keyboard
 
 from PyQt5.QtCore import QObject, pyqtSignal
 from PyQt5.QtWidgets import QMainWindow, QApplication
@@ -43,7 +44,7 @@ class GloveSettingsBackend(QObject):
                 case "Right Click":
                     pass
                 case "Minimize Window":
-                    pass
+                    keyboard.press_and_release('alt + tab')
                 case "Play/Pause Media":
                     pass
                 case "Next Media":

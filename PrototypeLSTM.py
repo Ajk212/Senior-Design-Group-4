@@ -66,6 +66,7 @@ def define_gesture(gesture_id):
     gesture = GESTURES[gesture_id]
     print(f"Gesture Recognized: {gesture}") 
     backend.execute_gesture(gesture)  #call to backend
+    prompt_file_input()
 
 def import_data_from_file(fileName):
     try:
