@@ -12,6 +12,7 @@ class GloveSettingsFrontend(QMainWindow):
         #list of all navigation combo boxes in UI
         self.NAV_COMBOS = [self.ui.tap_thumb_combo, 
                         self.ui.doubleTap_thumb_combo, 
+                        self.ui.hold_thumb_combo,
                         self.ui.openHand_swipeDown_combo, 
                         self.ui.grip_hand_combo, 
                         self.ui.openHand_swipeRight_combo, 
@@ -21,11 +22,12 @@ class GloveSettingsFrontend(QMainWindow):
                         self.ui.thumbsUp_combo, 
                         self.ui.thumbsDown_combo]
         
-        self.NAV_OPTIONS = ["None", "Click", "Right Click", "Minimize Window", "Play/Pause Media", "Next Media", "Previous Media", "Scroll Up", "Scroll Down", "Volume Up", "Volume Down"]
+        self.NAV_OPTIONS = ["None", "Click", "Right Click", "Toggle Pause Mode", "Minimize Window", "Play/Pause Media", "Next Media", "Previous Media", "Scroll Up", "Scroll Down", "Volume Up", "Volume Down"]
         
         self.GESTURE_MAP = {
             "tap_thumb": self.ui.tap_thumb_combo,
             "doubleTap_thumb": self.ui.doubleTap_thumb_combo,
+            "hold_thumb": self.ui.hold_thumb_combo,
             "openHand_swipeDown": self.ui.openHand_swipeDown_combo,
             "grip_hand": self.ui.grip_hand_combo,
             "openHand_swipeRight": self.ui.openHand_swipeRight_combo,
@@ -84,7 +86,7 @@ class GloveSettingsFrontend(QMainWindow):
         #TODO implement dynamic profile loading
 
         if self.profile == "Default":
-            default_settings = ["Click", "Right Click", "Minimize Window", "Play/Pause Media", "Next Media", "Previous Media", "Scroll Up", "Scroll Down", "Volume Up", "Volume Down"]
+            default_settings = ["Click", "Right Click", "Toggle Pause Mode", "Minimize Window", "Play/Pause Media", "Next Media", "Previous Media", "Scroll Up", "Scroll Down", "Volume Up", "Volume Down"]
             for combo, setting in zip(self.NAV_COMBOS, default_settings):
                 index = combo.findText(setting)
                 if index >= 0:

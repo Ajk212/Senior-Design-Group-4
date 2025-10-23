@@ -26,8 +26,8 @@ def synthesize_data(SAMPLES):
     for i in range(SAMPLES):
         if np.random.rand() < 0.5:
             #thumbs up gesture
-            seq = np.ones((WINDOW_SIZE, CHANNELS)) * np.array([1.0, 0.2, 0.5])
-            seq += 0.05*np.random.randn(*seq.shape)  # add a little noise
+            seq = np.ones((WINDOW_SIZE, CHANNELS)) * np.array([1.0, 0.2, 0.5]) #positive values for ax, ay, az
+            seq += 0.05*np.random.randn(*seq.shape)  #adds noise to data
             label = 0
         else:
             #thumbs down gesture
@@ -40,7 +40,7 @@ def synthesize_data(SAMPLES):
 
 X, y = synthesize_data(1000)
 
-#train/test split
+#training model
 split = int(0.8*len(X))
 X_train, X_test = X[:split], X[split:]
 y_train, y_test = y[:split], y[split:]
