@@ -48,5 +48,5 @@ model = models.Sequential([
 model.compile(optimizer = 'adam', loss = 'sparse_categorical_crossentropy', metrics = ['accuracy'])
 model.fit(x_train, y_train, epochs = 12, batch_size = 32, validation_split = .2)
 
-print("\nSaving model as 'BLE_Test_Model.h5'")
-model.save('BLE_Test_Model.h5')
+print("\nSaving model as 'BLE_Test_Model.keras'")
+model.save('BLE_Test_Model.keras')
