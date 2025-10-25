@@ -9,11 +9,18 @@ from GloveSettingsBackend import GloveSettingsBackend as Backend
 from GloveSettingsFrontend import GloveSettingsFrontend as Frontend
 from PyQt5.QtWidgets import QApplication
 
-GESTURES = ["thumbs_up", "thumbs_down"]
+GESTURES = ["tilt_left", "tilt_right", "tilt_forward", "tilt_backward"]
 NUM_CLASSES = len(GESTURES)
 
+IMU_DATA = {
+    "tilt_left":   [-7.3, -0.4, -0.71],
+    "tilt_right":  [ 3.3, -0.7,  0.3771],
+    "tilt_forward":[-4.4, -20.1,  2.82],
+    "tilt_backward":[-1.1, -3.9, -1.12]
+}
+
 WINDOW_SIZE = 50   #time steps per sample
-CHANNELS = 3       #ax ay az
+CHANNELS = 6      #g1x g1y g1z g2x g2y g2z
 SAMPLES = 500
 
 app = QApplication(sys.argv)
@@ -84,8 +91,11 @@ def prompt_file_input():
     import_data_from_file(fileName)
 
 def create_simulated_data():
-    thumbs_up_base = np.array([1.0, 0.2, 0.5])
-    thumbs_down_base = np.array([-1.0, -0.2, -0.5])
+    tilt_left_baseG1 = np.array([-7.3, -.4, -.71])
+    tilt_right_baseG1 = np.array([3.3, -0.7, .3771])
+    tilt_forward_baseG1 = np.array([-4.4, -20.1, 2.82])
+    tilt_backward_baseG1 = np.array([-1.1, -3.9, -1.12])
+
 
     up_seq = np.tile(thumbs_up_base, (WINDOW_SIZE, 1)) + np.random.normal(0, .05, (WINDOW_SIZE, CHANNELS))
     down_seq = np.tile(thumbs_down_base, (WINDOW_SIZE, 1)) + np.random.normal(0, .05, (WINDOW_SIZE, CHANNELS))
