@@ -9,8 +9,8 @@ from PyQt5.QtWidgets import QApplication
 from esp32Stream import ESP32BLEClient
 from GloveSettingsBackend import GloveSettingsBackend
 from GloveSettingsFrontend import GloveSettingsFrontend
-print(tf.__version__)  # should be 2.14.0
-tf.constant([1,2,3])   # simple sanity check
+
+
 async def main():
     
     frontend = GloveSettingsFrontend()
