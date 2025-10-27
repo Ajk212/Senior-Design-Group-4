@@ -29,7 +29,8 @@ class IMUFrame:
 
         # Unpack 14 floats, 2 uint32s, 1 uint8
         unpacked = struct.unpack(IMU_FRAME_FORMAT, data)
-        self.gyro1_x, self.gyro1_y, self.gyro1_z = unpacked[3:6]
+        self.gyro1_x, self.gyro1_y, self.gyro1_z = unpacked[7:10]
+
 
 class ESP32BLEClient:
     def __init__(self, model, backend):
@@ -50,6 +51,9 @@ class ESP32BLEClient:
                 await self.client.connect()
                 print(f"Connected to {d.name}")
                 self.connection_established = True
+
+                await asyncio.sleep(3.0)
+                
                 await self.client.start_notify(CHAR_UUID, self.imu_notification_handler)
                 return
         print("ESP32 device not found")
@@ -59,7 +63,7 @@ class ESP32BLEClient:
             await self.establish_connection()
         while True:
             await asyncio.sleep(.1)
-
+    
     def imu_notification_handler(self, sender, data):
         frame = IMUFrame(data)
 
@@ -76,49 +80,34 @@ class ESP32BLEClient:
         gesture_id = int(np.argmax(prediction))
         confidence = prediction[gesture_id]
 
-        CONF_THRESHOLD = 0.70
+        CONF_THRESHOLD = 0.60
 
         if confidence < CONF_THRESHOLD:
             gesture_name = "rest"
         else:
             gesture_name = LABELS[gesture_id]
-
+        
         #Smoothing
         if gesture_name != self.last_gesture:
             #Require stronger confidence to switch gestures
-            if confidence < 0.80:
+            if confidence < 0.70:
                 gesture_name = self.last_gesture
 
         self.last_gesture = gesture_name
-
+        
 
         print(f"Predicted: {gesture_name} (conf={confidence:.2f})")
 
-        #self.backend.execute_gesture(gesture_name)
+        self.backend.execute_gesture(gesture_name)
 
     '''
+
     def imu_notification_handler(self, sender, data):
         frame = IMUFrame(data)
-        gyro_values = [
-            frame.gyro1_x, frame.gyro1_y, frame.gyro1_z,
-            frame.gyro2_x, frame.gyro2_y, frame.gyro2_z
-        ]
-        self.window.append(gyro_values)
+        #print(f"\n IMU Frame #{frame.frame_count}:")
+        print(f"   IMU2 - Gyro:  ({frame.accel2_x:6.2f}, {frame.accel2_y:6.2f}, {frame.accel2_z:6.2f}) °/s")
 
+        #print(f"   Metadata - Timestamp: {frame.timestamp}")
+        #print(f"              Status: {frame.status}")
         
-        if len(self.window) == WINDOW_SIZE:
-            x = np.array(self.window)[np.newaxis, ...]
-            prediction = self.model.predict(x, verbose=0)
-            gesture_id = int(np.argmax(prediction))
-            gesture_name = GESTURES[gesture_id]
-            print(f"Predicted Gesture: {gesture_name}")
-
-
-    def imu_notification_handler(self, sender, data):
-        frame = IMUFrame(data)
-        print(f"\n IMU Frame #{frame.frame_count}:")
-        print(f"   IMU2 - Gyro:  ({frame.gyro2_x:6.2f}, {frame.gyro2_y:6.2f}, {frame.gyro2_z:6.2f}) °/s")
-
-        print(f"   Metadata - Timestamp: {frame.timestamp}")
-        print(f"              Status: {frame.status}")
     '''

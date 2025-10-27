@@ -20,7 +20,7 @@ class GloveSettingsBackend(QObject):
         #self.active_profile = DEFAULT
 
         self.isConnected = False
-        self.haltExecution = False
+        self.haltExecution = True
 
         self.MODES = ["Navigation", "Input", "Paused"]
 
@@ -37,18 +37,19 @@ class GloveSettingsBackend(QObject):
 
 
     def execute_gesture(self, gesture):
-        if not self.haltExecution:
+        if self.haltExecution:
             self.haltExecution = True
             combo_map = self.frontend.GESTURE_MAP
-            if gesture in combo_map:
-                action = combo_map[gesture].currentText()
-
-                if self.currentMode == "Paused" & action != "Pressure Sensor Held":
-                    print("Gesture execution paused.")
-                    self.haltExecution = False
-                    return
+            if gesture == "tilt_left" or gesture == "tilt_right":
+                action = gesture
+                #action = combo_map[gesture].currentText()
+                #print(f"Executing action: {action}")
+                #if self.currentMode == "Paused" & action != "Pressure Sensor Held":
+                #    print("Gesture execution paused.")
+                #    self.haltExecution = False
+                #    return
                 
-                print(f"Executing action: {action}")
+                #print(f"Executing action: {action}")
 
                 match action:
                     case "Click":
@@ -69,15 +70,16 @@ class GloveSettingsBackend(QObject):
                         pyautogui.scroll(500)
                     case "Scroll Down":
                         pyautogui.scroll(-500)
-                    case "Volume Up":
+                    case "tilt_right":
                         self.execute_volume_change(.05)
-                    case "Volume Down":
+                    case "tilt_left":
                         self.execute_volume_change(-.05)
             else:
-                print(f"Gesture {gesture} not recognized.")
+                #print(f"Gesture {gesture} not recognized.")
+                pass
 
-            self.send_ACK_to_glove()
-            self.haltExecution = False
+            #self.send_ACK_to_glove()
+            #self.haltExecution = False
 
     def change_mode(self):
         current_index = self.MODES.index(self.currentMode)
@@ -91,7 +93,7 @@ class GloveSettingsBackend(QObject):
         volume = interface.QueryInterface(IAudioEndpointVolume)
 
         curr = volume.GetMasterVolumeLevelScalar()
-        new = curr + step
+        new = max(0.0, min(1.0, curr + step))
         volume.SetMasterVolumeLevelScalar(new, None)
 
     def send_ACK_to_glove():
