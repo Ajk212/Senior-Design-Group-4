@@ -7,8 +7,8 @@
 #include "esp_log.h"
 
 // I2C Configuration
-#define I2C_MASTER_SCL_IO 1
-#define I2C_MASTER_SDA_IO 2
+#define I2C_MASTER_SCL_IO 2
+#define I2C_MASTER_SDA_IO 1
 #define I2C_MASTER_NUM I2C_NUM_0
 #define I2C_MASTER_FREQ_HZ 100000
 #define I2C_MASTER_TX_BUF_DISABLE 0
@@ -256,35 +256,45 @@ static void oled_update_display(float accel1_x, float accel1_y, float accel1_z,
                                 float temp1, float temp2)
 {
     char line[22];
+    char temp_buf[25];
 
     // Line 0: Header
     snprintf(line, sizeof(line), "Dual IMU Monitor");
     oled_print_text(0, 0, line);
 
     // Line 1: IMU1 Acceleration
-    snprintf(line, sizeof(line), "A1:%.1f,%.1f,%.1f", accel1_x, accel1_y, accel1_z);
+    snprintf(temp_buf, sizeof(temp_buf), "A1:%.1f,%.1f,%.1f", accel1_x, accel1_y, accel1_z);
+    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
     oled_print_text(1, 0, line);
 
     // Line 2: IMU1 Gyroscope
-    snprintf(line, sizeof(line), "G1:%.1f,%.1f,%.1f", gyro1_x, gyro1_y, gyro1_z);
+    snprintf(temp_buf, sizeof(temp_buf), "G1:%.1f,%.1f,%.1f", gyro1_x, gyro1_y, gyro1_z);
+    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
     oled_print_text(2, 0, line);
 
     // Line 3: IMU2 Acceleration
-    snprintf(line, sizeof(line), "A2:%.1f,%.1f,%.1f", accel2_x, accel2_y, accel2_z);
+    snprintf(temp_buf, sizeof(temp_buf), "A2:%.1f,%.1f,%.1f", accel2_x, accel2_y, accel2_z);
+    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
     oled_print_text(3, 0, line);
 
     // Line 4: IMU2 Gyroscope
-    snprintf(line, sizeof(line), "G2:%.1f,%.1f,%.1f", gyro2_x, gyro2_y, gyro2_z);
+    snprintf(temp_buf, sizeof(temp_buf), "G2:%.1f,%.1f,%.1f", gyro2_x, gyro2_y, gyro2_z);
+    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
     oled_print_text(4, 0, line);
 
     // Line 5: Temperatures
-    snprintf(line, sizeof(line), "T1:%.1fF T2:%.1fF", temp1, temp2);
+    snprintf(temp_buf, sizeof(temp_buf), "T1:%.1fF T2:%.1fF", temp1, temp2);
+    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
     oled_print_text(5, 0, line);
 
     // Line 6: Status
     static int counter = 0;
-    snprintf(line, sizeof(line), "Update: %d", counter++);
+    snprintf(temp_buf, sizeof(temp_buf), "Update: %d", counter++);
+    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
     oled_print_text(6, 0, line);
+
+    snprintf(line, sizeof(line), "\%-20.20s", "");
+    oled_print_text(7, 0, line);
 }
 
 // MPU-6050 Functions
@@ -376,9 +386,9 @@ static esp_err_t mpu6050_read_gyroscope_sensor(uint8_t sensor_addr, float *gx, f
         int16_t gyro_y = (data[2] << 8) | data[3];
         int16_t gyro_z = (data[4] << 8) | data[5];
 
-        *gx = gyro_x / 131.0;
-        *gy = gyro_y / 131.0;
-        *gz = gyro_z / 131.0;
+        *gx = gyro_x / 65.5;
+        *gy = gyro_y / 65.5;
+        *gz = gyro_z / 65.5;
     }
     return ret;
 }
@@ -386,7 +396,7 @@ static esp_err_t mpu6050_read_gyroscope_sensor(uint8_t sensor_addr, float *gx, f
 static esp_err_t mpu6050_read_temperature_sensor(uint8_t sensor_addr, float *temp_f)
 {
     uint8_t data[2];
-    esp_err_t ret = mpu6050_register_read(sensor_addr, 0x41, data, sizeof(data));
+    esp_err_t ret = mpu6050_register_read(sensor_addr, 0x41, data, sizeof(data)); // 0x41 is the temperature out reg
 
     if (ret == ESP_OK)
     {
@@ -397,7 +407,7 @@ static esp_err_t mpu6050_read_temperature_sensor(uint8_t sensor_addr, float *tem
     return ret;
 }
 
-extern "C" void app_main(void)
+void app_main(void)
 {
     ESP_LOGI(IMUTAG, "Starting Dual MPU6050 + OLED Display");
 
@@ -405,11 +415,31 @@ extern "C" void app_main(void)
     ESP_ERROR_CHECK(i2c_master_init());
     ESP_LOGI(IMUTAG, "I2C initialized successfully");
 
+    // Test I2C communication by scanning for devices
+    ESP_LOGI(IMUTAG, "Scanning I2C bus...");
+    for (uint8_t addr = 0x08; addr <= 0x77; addr++)
+    {
+        i2c_cmd_handle_t cmd = i2c_cmd_link_create();
+        i2c_master_start(cmd);
+        i2c_master_write_byte(cmd, (addr << 1) | I2C_MASTER_WRITE, true);
+        i2c_master_stop(cmd);
+
+        esp_err_t ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, pdMS_TO_TICKS(100));
+        i2c_cmd_link_delete(cmd);
+
+        if (ret == ESP_OK)
+        {
+            ESP_LOGI(IMUTAG, "Found device at address: 0x%02X", addr);
+        }
+    }
+    ESP_LOGI(IMUTAG, "I2C scan complete");
+
     // Initialize OLED
-    oled_init_simple();
+    // oled_init_simple();
 
     // Initialize both MPU-6050 sensors
-    if (mpu6050_init_both() != ESP_OK)
+    // if (mpu6050_init_both() != ESP_OK)
+    if (mpu6050_init_sensor(MPU6050_I2C_ADDR_1, "IMU_1") != ESP_OK)
     {
         ESP_LOGE(IMUTAG, "Failed to initialize MPU6050 sensors");
         while (1)
@@ -422,7 +452,7 @@ extern "C" void app_main(void)
 
     // Data variables
     float accel1_x, accel1_y, accel1_z, gyro1_x, gyro1_y, gyro1_z, temp1_f;
-    float accel2_x, accel2_y, accel2_z, gyro2_x, gyro2_y, gyro2_z, temp2_f;
+    // float accel2_x, accel2_y, accel2_z, gyro2_x, gyro2_y, gyro2_z, temp2_f;
 
     while (1)
     {
@@ -432,25 +462,27 @@ extern "C" void app_main(void)
                         mpu6050_read_temperature_sensor(MPU6050_I2C_ADDR_1, &temp1_f) == ESP_OK);
 
         // Read IMU 2
-        bool imu2_ok = (mpu6050_read_accelerometer_sensor(MPU6050_I2C_ADDR_2, &accel2_x, &accel2_y, &accel2_z) == ESP_OK &&
-                        mpu6050_read_gyroscope_sensor(MPU6050_I2C_ADDR_2, &gyro2_x, &gyro2_y, &gyro2_z) == ESP_OK &&
-                        mpu6050_read_temperature_sensor(MPU6050_I2C_ADDR_2, &temp2_f) == ESP_OK);
+        // bool imu2_ok = (mpu6050_read_accelerometer_sensor(MPU6050_I2C_ADDR_2, &accel2_x, &accel2_y, &accel2_z) == ESP_OK &&
+        //                 mpu6050_read_gyroscope_sensor(MPU6050_I2C_ADDR_2, &gyro2_x, &gyro2_y, &gyro2_z) == ESP_OK &&
+        //                 mpu6050_read_temperature_sensor(MPU6050_I2C_ADDR_2, &temp2_f) == ESP_OK);
 
-        if (imu1_ok && imu2_ok)
+        // if (imu1_ok && imu2_ok)
+        if (imu1_ok)
         {
             // Update OLED display
-            oled_update_display(accel1_x, accel1_y, accel1_z,
-                                accel2_x, accel2_y, accel2_z,
-                                gyro1_x, gyro1_y, gyro1_z,
-                                gyro2_x, gyro2_y, gyro2_z,
-                                temp1_f, temp2_f);
+            // oled_update_display(accel1_x, accel1_y, accel1_z,
+            //                     accel2_x, accel2_y, accel2_z,
+            //                     gyro1_x, gyro1_y, gyro1_z,
+            //                     gyro2_x, gyro2_y, gyro2_z,
+            //                     temp1_f, temp2_f);
 
             // Log to serial
             ESP_LOGI(IMUTAG, "IMU1 Accel: X=%.2f, Y=%.2f, Z=%.2f m/s^2", accel1_x, accel1_y, accel1_z);
             ESP_LOGI(IMUTAG, "IMU1 Gyro:  X=%.2f, Y=%.2f, Z=%.2f deg/s", gyro1_x, gyro1_y, gyro1_z);
-            ESP_LOGI(IMUTAG, "IMU2 Accel: X=%.2f, Y=%.2f, Z=%.2f m/s^2", accel2_x, accel2_y, accel2_z);
-            ESP_LOGI(IMUTAG, "IMU2 Gyro:  X=%.2f, Y=%.2f, Z=%.2f deg/s", gyro2_x, gyro2_y, gyro2_z);
-            ESP_LOGI(IMUTAG, "Temps: IMU1=%.1f°F, IMU2=%.1f°F", temp1_f, temp2_f);
+            // ESP_LOGI(IMUTAG, "IMU2 Accel: X=%.2f, Y=%.2f, Z=%.2f m/s^2", accel2_x, accel2_y, accel2_z);
+            // ESP_LOGI(IMUTAG, "IMU2 Gyro:  X=%.2f, Y=%.2f, Z=%.2f deg/s", gyro2_x, gyro2_y, gyro2_z);
+            // ESP_LOGI(IMUTAG, "Temps: IMU1=%.1f°F, IMU2=%.1f°F", temp1_f, temp2_f);
+            ESP_LOGI(IMUTAG, "Temps: IMU1=%.1f°F", temp1_f);
         }
         else
         {
@@ -458,6 +490,6 @@ extern "C" void app_main(void)
         }
 
         ESP_LOGI(IMUTAG, "---");
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        vTaskDelay(pdMS_TO_TICKS(100));
     }
 }
