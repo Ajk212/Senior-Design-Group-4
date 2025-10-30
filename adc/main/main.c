@@ -10,7 +10,7 @@
 #include "esp_adc/adc_cali_scheme.h"
 #include "driver/gpio.h"
 
-const static char *TAG = "FLEX_SENSOR";
+const static char *TAG = "ADC";
 
 // ADC Configuration
 #define ADC_UNIT ADC_UNIT_1
@@ -37,6 +37,7 @@ float flex_bent_angle = 90;            // 90 degrees when fully bent
 
 static adc_oneshot_unit_handle_t adc_handle;
 static adc_cali_handle_t flex_1_cali_handle;
+static adc_cali_handle_t touch_cali_handle;
 static bool calibration_enabled = false;
 
 // Function to initialize ADC
@@ -55,29 +56,35 @@ static void flex_sensor_init(void)
     };
 
     ESP_ERROR_CHECK(adc_oneshot_config_channel(adc_handle, FLEX_1_ADC_CHANNEL, &adc_chan_config));
+    ESP_ERROR_CHECK(adc_oneshot_config_channel(adc_handle, FLEX_2_ADC_CHANNEL, &adc_chan_config));
 
-    // ADC Calibration Init for one channel
-    calibration_enabled = adc_calibration_init(ADC_UNIT,
-                                               FLEX_1_ADC_CHANNEL,
-                                               ADC_ATTEN,
-                                               &flex_1_cali_handle);
+    // ADC Calibration Init for both channels
+    calibration_enabled = adc_calibration_init(ADC_UNIT, FLEX_1_ADC_CHANNEL, ADC_ATTEN, &flex_1_cali_handle);
+    bool calibration_enabled_2 = adc_calibration_init(ADC_UNIT, FLEX_2_ADC_CHANNEL, ADC_ATTEN, &touch_cali_handle);
+
+    // Both need to be enabled for full calibration
+    calibration_enabled = calibration_enabled && calibration_enabled_2;
 }
 
 // Function to read raw ADC value
-static int read_flex_raw(void)
+static int read_adc_raw_channel(adc_channel_t channel)
 {
     int raw_value;
-    ESP_ERROR_CHECK(adc_oneshot_read(adc_handle, FLEX_1_ADC_CHANNEL, &raw_value));
+    ESP_ERROR_CHECK(adc_oneshot_read(adc_handle, channel, &raw_value));
     return raw_value;
 }
 
-// Function to read voltage (if calibration is available)
-static int read_flex_voltage(int raw_value)
+// Generic function to read voltage from any channel
+static int read_adc_voltage_channel(adc_cali_handle_t cali_handle, int raw_value)
 {
     int voltage = 0;
-    if (calibration_enabled && flex_1_cali_handle != NULL)
+    if (calibration_enabled && cali_handle != NULL)
     {
-        ESP_ERROR_CHECK(adc_cali_raw_to_voltage(flex_1_cali_handle, raw_value, &voltage));
+        esp_err_t ret = adc_cali_raw_to_voltage(cali_handle, raw_value, &voltage);
+        if (ret != ESP_OK)
+        {
+            ESP_LOGE(TAG, "Voltage conversion failed: %s", esp_err_to_name(ret));
+        }
     }
     return voltage;
 }
@@ -98,20 +105,18 @@ static float calculate_bend_angle_normalized(float normalized_value)
 }
 
 // Function to calculate bend angle from voltage
-static float calculate_bend_angle_from_voltage(int voltage_mv)
+static float calculate_bend_angle_from_voltage(int voltage_mv, float voltage_straight, float voltage_bent)
 {
-    float normalized = (voltage_mv - flex_1_voltage_straight) /
-                       (flex_1_voltage_bent - flex_1_voltage_straight);
-
+    float normalized = (float)(voltage_mv - voltage_straight) /
+                       (voltage_bent - voltage_straight);
     return calculate_bend_angle_normalized(normalized);
 }
 
 // Function to calculate bend angle from raw ADC
-static float calculate_bend_angle_from_raw(int raw_adc)
+static float calculate_bend_angle_from_raw(int raw_adc, float adc_straight, float adc_bent)
 {
-    float normalized = (raw_adc - flex_1_straight_adc_value) /
-                       (flex_1_bent_adc_value - flex_1_straight_adc_value);
-
+    float normalized = (float)(raw_adc - adc_straight) /
+                       (adc_bent - adc_straight);
     return calculate_bend_angle_normalized(normalized);
 }
 
@@ -122,13 +127,13 @@ static void flex_sensor_calibration(void)
 
     ESP_LOGI(TAG, "Place sensor STRAIGHT");
     vTaskDelay(pdMS_TO_TICKS(3000));
-    int straight_raw = read_flex_raw();
-    int straight_voltage = read_flex_voltage(straight_raw);
+    int straight_raw = read_adc_raw_channel(ADC_CHANNEL_4);
+    int straight_voltage = read_adc_voltage_channel(flex_1_cali_handle, straight_raw);
 
     ESP_LOGI(TAG, "BEND sensor fully");
     vTaskDelay(pdMS_TO_TICKS(3000));
-    int bent_raw = read_flex_raw();
-    int bent_voltage = read_flex_voltage(bent_raw);
+    int bent_raw = read_adc_raw_channel(ADC_CHANNEL_4);
+    int bent_voltage = read_adc_voltage_channel(flex_1_cali_handle, bent_raw);
 
     flex_1_straight_adc_value = (float)straight_raw;
     flex_1_bent_adc_value = (float)bent_raw;
@@ -222,21 +227,29 @@ void app_main(void)
     while (1)
     {
         // Read raw ADC value
-        int raw_value = read_flex_raw();
+        int flex_raw_value = read_adc_raw_channel(ADC_CHANNEL_4);
+        int touch_raw_value = read_adc_raw_channel(ADC_CHANNEL_5);
         float bend_angle;
 
         if (calibration_enabled)
         {
-            int voltage = read_flex_voltage(raw_value);
-            bend_angle = calculate_bend_angle_from_voltage(voltage);
-            ESP_LOGI(TAG, "Raw: %d, Voltage: %d mV, Angle: %.1f°",
-                     raw_value, voltage, bend_angle);
+            int flex_voltage = read_adc_voltage_channel(flex_1_cali_handle, flex_raw_value);
+            int touch_voltage = read_adc_voltage_channel(touch_cali_handle, touch_raw_value);
+            bend_angle = calculate_bend_angle_from_voltage(flex_voltage, flex_1_voltage_straight, flex_1_voltage_bent);
+            ESP_LOGI(TAG, "FLEX: Raw: %d, Voltage: %d mV, Angle: %.1f°",
+                     flex_raw_value, flex_voltage, bend_angle);
+            ESP_LOGI(TAG, "TOUCH: Raw: %d, Voltage: %d mV",
+                     touch_raw_value, touch_voltage);
+            // ESP_LOGI(TAG, "Raw: %d, Voltage: %d mV",
+            //          raw_value, voltage);
         }
         else
         {
             // Fallback to raw ADC (less accurate)
-            bend_angle = calculate_bend_angle_from_raw(raw_value);
-            ESP_LOGI(TAG, "Raw: %d, Angle: %.1f°", raw_value, bend_angle);
+            bend_angle = calculate_bend_angle_from_raw(flex_raw_value, flex_1_straight_adc_value, flex_1_bent_adc_value);
+            ESP_LOGI(TAG, "FLEX: Raw: %d, Angle: %.1f°", flex_raw_value, bend_angle);
+            ESP_LOGI(TAG, "TOUCH: Raw: %d", touch_raw_value);
+            // ESP_LOGI(TAG, "Raw: %d", raw_value);
         }
 
         vTaskDelay(pdMS_TO_TICKS(500)); // Read every 500ms
