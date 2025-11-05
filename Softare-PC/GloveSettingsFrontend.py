@@ -1,9 +1,10 @@
 
 from PyQt5.QtWidgets import QMainWindow
 from ConfigUI import Ui_MainWindow as configUI #May need to change name based on window name
-
+from PyQt5.QtCore import pyqtSignal
 
 class GloveSettingsFrontend(QMainWindow):
+    connect_requested = pyqtSignal()
     def __init__(self):
         super().__init__()
         self.ui = configUI()
@@ -45,7 +46,12 @@ class GloveSettingsFrontend(QMainWindow):
         # Load combo boxes with available NAV_OPTIONS
         # Connect buttons to their respective functions
 
+        self.ui.pushButton.clicked.connect(self.attemptConnection)
 
+    def attemptConnection(self):
+        print("Connect button clicked")
+        self.connect_requested.emit()
+        
 
     def comboBoxInit(self):
         for combo in self.NAV_COMBOS:

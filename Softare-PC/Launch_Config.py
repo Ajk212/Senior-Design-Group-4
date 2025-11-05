@@ -15,12 +15,12 @@ async def main():
     
     frontend = GloveSettingsFrontend()
     backend = GloveSettingsBackend(frontend)
-    #frontend.show()
+    frontend.show()
     
     model = load_model('BLE_Test_Model.keras')
-    ble = ESP32BLEClient(model, backend)
 
-    await ble.begin_dataStream()
+    #ble = ESP32BLEClient(model, backend)
+    #await ble.begin_dataStream()
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

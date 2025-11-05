@@ -2,11 +2,17 @@ import sys
 import math
 import keyboard
 import pyautogui
+import asyncio
 
 from PyQt5.QtCore import QObject, pyqtSignal
 from PyQt5.QtWidgets import QMainWindow, QApplication
 from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
 from comtypes import CLSCTX_ALL
+from PyQt5.QtCore import pyqtSignal
+
+from bleak import BleakScanner, BleakClient
+CHAR_UUID = "0000ff01-0000-1000-8000-00805f9b34fb"     # Characteristic 0xFF01
+
 
 from GloveSettingsFrontend import GloveSettingsFrontend
 
@@ -31,10 +37,24 @@ class GloveSettingsBackend(QObject):
         # TODO update connection status text, connection button, connection routine etc
         pass
 
-    def connectGlove(self):
-        # TODO implement connection logic
-        pass
+    async def connectGlove(self):
+        print("Searching for HandSense Device...")
 
+        device = await BleakScanner.discover()
+        for d in device:
+            if d.name and "ESP32C6-HANDSENSE" in d.name:
+                self.client = BleakClient(d.address)
+                await self.client.connect()
+                print(f"Connected to {d.name}")
+                self.isConnected = True
+
+                await asyncio.sleep(3.0)
+
+                await self.client.start_notify(CHAR_UUID, self.recieve_detected_gesture)
+
+    def recieve_detected_gesture(self, gesture):
+        # TODO Test recieving gesture from glove
+        pass
 
     def execute_gesture(self, gesture):
         if self.haltExecution:
@@ -70,10 +90,15 @@ class GloveSettingsBackend(QObject):
                         pyautogui.scroll(500)
                     case "Scroll Down":
                         pyautogui.scroll(-500)
-                    case "tilt_right":
+                    case "Volume Up":
                         self.execute_volume_change(.05)
-                    case "tilt_left":
+                    case "Volume Down":
                         self.execute_volume_change(-.05)
+                        #case move_mouse_up:
+                        #case move_mouse_down:
+                        #case move_mouse_left:
+                        #case move_mouse_right:
+                        #case 
             else:
                 #print(f"Gesture {gesture} not recognized.")
                 pass
@@ -104,5 +129,8 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)  
     frontend = GloveSettingsFrontend()
     backend = GloveSettingsBackend(frontend)
+
+    frontend.connect_requested.connect(backend.connectGlove)
+
     frontend.show()
     sys.exit(app.exec_())
