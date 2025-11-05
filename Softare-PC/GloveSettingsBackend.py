@@ -21,10 +21,6 @@ class GloveSettingsBackend(QObject):
         super().__init__()
         self.frontend = frontend
 
-        ## Initialize defualt profile 
-        # TODO make dynamic profile options
-        #self.active_profile = DEFAULT
-
         self.isConnected = False
         self.haltExecution = True
 
@@ -47,7 +43,7 @@ class GloveSettingsBackend(QObject):
                 await self.client.connect()
                 print(f"Connected to {d.name}")
                 self.isConnected = True
-
+                self.frontend.updateConnectionStatus(self.isConnected)
                 await asyncio.sleep(3.0)
 
                 await self.client.start_notify(CHAR_UUID, self.recieve_detected_gesture)

@@ -46,11 +46,18 @@ class GloveSettingsFrontend(QMainWindow):
         # Load combo boxes with available NAV_OPTIONS
         # Connect buttons to their respective functions
 
-        self.ui.pushButton.clicked.connect(self.attemptConnection)
+        self.ui.connect_push_button.clicked.connect(self.attemptConnection)
 
     def attemptConnection(self):
         print("Connect button clicked")
         self.connect_requested.emit()
+
+    def updateConnectionStatus(self, status):
+        if status:
+            self.ui.connection_status_label.setText("Securly Connected")
+            
+        else:
+            self.ui.connection_status_label.setText("No Connection Found")
         
 
     def comboBoxInit(self):
