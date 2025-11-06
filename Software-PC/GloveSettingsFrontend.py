@@ -1,7 +1,8 @@
 
 from PyQt5.QtWidgets import QMainWindow
 from ConfigUI import Ui_MainWindow as configUI #May need to change name based on window name
-from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtCore import pyqtSignal, Qt
+from PyQt5.QtGui import QIcon
 
 class GloveSettingsFrontend(QMainWindow):
     connect_requested = pyqtSignal()
@@ -9,6 +10,10 @@ class GloveSettingsFrontend(QMainWindow):
         super().__init__()
         self.ui = configUI()
         self.ui.setupUi(self)
+        self.apply_stylesheet("style.qss")
+        self.setWindowIcon(QIcon("HandSense_Hand.png"))
+        self.resize(600, 600)
+
 
         #list of all navigation combo boxes in UI
         self.NAV_COMBOS = [self.ui.tap_thumb_combo, 
@@ -48,16 +53,30 @@ class GloveSettingsFrontend(QMainWindow):
 
         self.ui.connect_push_button.clicked.connect(self.attemptConnection)
 
+    def keyPressEvent(self, event):
+        # Reload stylesheet when the user presses the 'r' key
+        if event.key() == Qt.Key_R:
+            self.apply_stylesheet("style.qss")
+            print("Stylesheet reloaded")
+
+    def apply_stylesheet(self, filename):
+        try:
+            with open(filename, "r") as file:
+                style = file.read()
+                self.setStyleSheet(style)
+        except Exception as e:
+            print(f"Failed to load stylesheet: {e}")
+
     def attemptConnection(self):
         print("Connect button clicked")
         self.connect_requested.emit()
 
     def updateConnectionStatus(self, status):
         if status:
-            self.ui.connection_status_label.setText("Securly Connected")
+            self.ui.connection_label.setText("Connection Established")
             
         else:
-            self.ui.connection_status_label.setText("No Connection Found")
+            self.ui.connection_label.setText("No Connection Found")
         
 
     def comboBoxInit(self):

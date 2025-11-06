@@ -16,7 +16,7 @@ class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         if not MainWindow.objectName():
             MainWindow.setObjectName(u"MainWindow")
-        MainWindow.resize(681, 563)
+        MainWindow.resize(709, 785)
         sizePolicy = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -84,7 +84,7 @@ class Ui_MainWindow(object):
         self.scrollArea.setAlignment(Qt.AlignLeading|Qt.AlignLeft|Qt.AlignTop)
         self.scrollAreaWidgetContents = QWidget()
         self.scrollAreaWidgetContents.setObjectName(u"scrollAreaWidgetContents")
-        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 644, 505))
+        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 672, 646))
         sizePolicy.setHeightForWidth(self.scrollAreaWidgetContents.sizePolicy().hasHeightForWidth())
         self.scrollAreaWidgetContents.setSizePolicy(sizePolicy)
         self.gridLayout_3 = QGridLayout(self.scrollAreaWidgetContents)
@@ -92,83 +92,23 @@ class Ui_MainWindow(object):
         self.gridLayout_3.setHorizontalSpacing(0)
         self.gridLayout_3.setVerticalSpacing(10)
         self.gridLayout_3.setContentsMargins(0, 0, 0, 0)
-        self.line_2 = QFrame(self.scrollAreaWidgetContents)
-        self.line_2.setObjectName(u"line_2")
-        self.line_2.setFrameShadow(QFrame.Plain)
-        self.line_2.setFrameShape(QFrame.HLine)
+        self.doubleTap_thumb_combo = QComboBox(self.scrollAreaWidgetContents)
+        self.doubleTap_thumb_combo.addItem("")
+        self.doubleTap_thumb_combo.setObjectName(u"doubleTap_thumb_combo")
 
-        self.gridLayout_3.addWidget(self.line_2, 2, 0, 1, 1)
+        self.gridLayout_3.addWidget(self.doubleTap_thumb_combo, 3, 1, 1, 1)
 
-        self.label_8 = QLabel(self.scrollAreaWidgetContents)
-        self.label_8.setObjectName(u"label_8")
+        self.line_6 = QFrame(self.scrollAreaWidgetContents)
+        self.line_6.setObjectName(u"line_6")
+        self.line_6.setFrameShadow(QFrame.Plain)
+        self.line_6.setFrameShape(QFrame.HLine)
 
-        self.gridLayout_3.addWidget(self.label_8, 13, 0, 1, 1)
+        self.gridLayout_3.addWidget(self.line_6, 8, 0, 1, 1)
 
-        self.label_2 = QLabel(self.scrollAreaWidgetContents)
-        self.label_2.setObjectName(u"label_2")
-        self.label_2.setFrameShape(QFrame.NoFrame)
+        self.label_16 = QLabel(self.scrollAreaWidgetContents)
+        self.label_16.setObjectName(u"label_16")
 
-        self.gridLayout_3.addWidget(self.label_2, 1, 0, 1, 1)
-
-        self.CCW_index_combo = QComboBox(self.scrollAreaWidgetContents)
-        self.CCW_index_combo.addItem("")
-        self.CCW_index_combo.setObjectName(u"CCW_index_combo")
-
-        self.gridLayout_3.addWidget(self.CCW_index_combo, 17, 1, 1, 1)
-
-        self.line_15 = QFrame(self.scrollAreaWidgetContents)
-        self.line_15.setObjectName(u"line_15")
-        self.line_15.setFrameShadow(QFrame.Plain)
-        self.line_15.setFrameShape(QFrame.HLine)
-
-        self.gridLayout_3.addWidget(self.line_15, 18, 1, 1, 1)
-
-        self.verticalSpacer_2 = QSpacerItem(20, 20, QSizePolicy.Minimum, QSizePolicy.Fixed)
-
-        self.gridLayout_3.addItem(self.verticalSpacer_2, 24, 1, 1, 1)
-
-        self.line_14 = QFrame(self.scrollAreaWidgetContents)
-        self.line_14.setObjectName(u"line_14")
-        self.line_14.setFrameShadow(QFrame.Plain)
-        self.line_14.setFrameShape(QFrame.HLine)
-
-        self.gridLayout_3.addWidget(self.line_14, 18, 0, 1, 1)
-
-        self.line_10 = QFrame(self.scrollAreaWidgetContents)
-        self.line_10.setObjectName(u"line_10")
-        self.line_10.setFrameShadow(QFrame.Plain)
-        self.line_10.setFrameShape(QFrame.HLine)
-
-        self.gridLayout_3.addWidget(self.line_10, 14, 0, 1, 1)
-
-        self.line_7 = QFrame(self.scrollAreaWidgetContents)
-        self.line_7.setObjectName(u"line_7")
-        self.line_7.setFrameShadow(QFrame.Plain)
-        self.line_7.setFrameShape(QFrame.HLine)
-
-        self.gridLayout_3.addWidget(self.line_7, 10, 1, 1, 1)
-
-        self.label_12 = QLabel(self.scrollAreaWidgetContents)
-        self.label_12.setObjectName(u"label_12")
-
-        self.gridLayout_3.addWidget(self.label_12, 21, 0, 1, 1)
-
-        self.line_11 = QFrame(self.scrollAreaWidgetContents)
-        self.line_11.setObjectName(u"line_11")
-        self.line_11.setFrameShadow(QFrame.Plain)
-        self.line_11.setFrameShape(QFrame.HLine)
-
-        self.gridLayout_3.addWidget(self.line_11, 14, 1, 1, 1)
-
-        self.thumbsUp_combo = QComboBox(self.scrollAreaWidgetContents)
-        self.thumbsUp_combo.addItem("")
-        self.thumbsUp_combo.setObjectName(u"thumbsUp_combo")
-
-        self.gridLayout_3.addWidget(self.thumbsUp_combo, 21, 1, 1, 1)
-
-        self.verticalSpacer = QSpacerItem(20, 20, QSizePolicy.Minimum, QSizePolicy.Fixed)
-
-        self.gridLayout_3.addItem(self.verticalSpacer, 24, 0, 1, 1)
+        self.gridLayout_3.addWidget(self.label_16, 5, 0, 1, 1)
 
         self.label_15 = QLabel(self.scrollAreaWidgetContents)
         self.label_15.setObjectName(u"label_15")
@@ -186,20 +126,90 @@ class Ui_MainWindow(object):
         self.CW_index_combo.addItem("")
         self.CW_index_combo.setObjectName(u"CW_index_combo")
 
-        self.gridLayout_3.addWidget(self.CW_index_combo, 19, 1, 1, 1)
+        self.gridLayout_3.addWidget(self.CW_index_combo, 17, 1, 1, 1)
 
-        self.line_12 = QFrame(self.scrollAreaWidgetContents)
-        self.line_12.setObjectName(u"line_12")
-        self.line_12.setFrameShadow(QFrame.Plain)
-        self.line_12.setFrameShape(QFrame.HLine)
+        self.line_9 = QFrame(self.scrollAreaWidgetContents)
+        self.line_9.setObjectName(u"line_9")
+        self.line_9.setFrameShadow(QFrame.Plain)
+        self.line_9.setFrameShape(QFrame.HLine)
 
-        self.gridLayout_3.addWidget(self.line_12, 16, 0, 1, 1)
+        self.gridLayout_3.addWidget(self.line_9, 10, 1, 1, 1)
+
+        self.openHand_swipeRight_combo = QComboBox(self.scrollAreaWidgetContents)
+        self.openHand_swipeRight_combo.addItem("")
+        self.openHand_swipeRight_combo.setObjectName(u"openHand_swipeRight_combo")
+
+        self.gridLayout_3.addWidget(self.openHand_swipeRight_combo, 11, 1, 1, 1)
+
+        self.hold_thumb_combo = QComboBox(self.scrollAreaWidgetContents)
+        self.hold_thumb_combo.addItem("")
+        self.hold_thumb_combo.setObjectName(u"hold_thumb_combo")
+
+        self.gridLayout_3.addWidget(self.hold_thumb_combo, 5, 1, 1, 1)
+
+        self.line_8 = QFrame(self.scrollAreaWidgetContents)
+        self.line_8.setObjectName(u"line_8")
+        self.line_8.setFrameShadow(QFrame.Plain)
+        self.line_8.setFrameShape(QFrame.HLine)
+
+        self.gridLayout_3.addWidget(self.line_8, 10, 0, 1, 1)
+
+        self.line_2 = QFrame(self.scrollAreaWidgetContents)
+        self.line_2.setObjectName(u"line_2")
+        self.line_2.setFrameShadow(QFrame.Plain)
+        self.line_2.setFrameShape(QFrame.HLine)
+
+        self.gridLayout_3.addWidget(self.line_2, 2, 0, 1, 1)
+
+        self.label_6 = QLabel(self.scrollAreaWidgetContents)
+        self.label_6.setObjectName(u"label_6")
+
+        self.gridLayout_3.addWidget(self.label_6, 7, 0, 1, 1)
+
+        self.line_7 = QFrame(self.scrollAreaWidgetContents)
+        self.line_7.setObjectName(u"line_7")
+        self.line_7.setFrameShadow(QFrame.Plain)
+        self.line_7.setFrameShape(QFrame.HLine)
+
+        self.gridLayout_3.addWidget(self.line_7, 8, 1, 1, 1)
+
+        self.label_10 = QLabel(self.scrollAreaWidgetContents)
+        self.label_10.setObjectName(u"label_10")
+
+        self.gridLayout_3.addWidget(self.label_10, 15, 0, 1, 1)
 
         self.openHand_swipeDown_combo = QComboBox(self.scrollAreaWidgetContents)
         self.openHand_swipeDown_combo.addItem("")
         self.openHand_swipeDown_combo.setObjectName(u"openHand_swipeDown_combo")
 
-        self.gridLayout_3.addWidget(self.openHand_swipeDown_combo, 9, 1, 1, 1)
+        self.gridLayout_3.addWidget(self.openHand_swipeDown_combo, 7, 1, 1, 1)
+
+        self.CCW_index_combo = QComboBox(self.scrollAreaWidgetContents)
+        self.CCW_index_combo.addItem("")
+        self.CCW_index_combo.setObjectName(u"CCW_index_combo")
+
+        self.gridLayout_3.addWidget(self.CCW_index_combo, 15, 1, 1, 1)
+
+        self.line_21 = QFrame(self.scrollAreaWidgetContents)
+        self.line_21.setObjectName(u"line_21")
+        self.line_21.setFrameShadow(QFrame.Plain)
+        self.line_21.setFrameShape(QFrame.HLine)
+
+        self.gridLayout_3.addWidget(self.line_21, 4, 1, 1, 1)
+
+        self.line_13 = QFrame(self.scrollAreaWidgetContents)
+        self.line_13.setObjectName(u"line_13")
+        self.line_13.setFrameShadow(QFrame.Plain)
+        self.line_13.setFrameShape(QFrame.HLine)
+
+        self.gridLayout_3.addWidget(self.line_13, 14, 1, 1, 1)
+
+        self.line_18 = QFrame(self.scrollAreaWidgetContents)
+        self.line_18.setObjectName(u"line_18")
+        self.line_18.setFrameShadow(QFrame.Plain)
+        self.line_18.setFrameShape(QFrame.HLine)
+
+        self.gridLayout_3.addWidget(self.line_18, 20, 0, 1, 1)
 
         self.label_14 = QLabel(self.scrollAreaWidgetContents)
         self.label_14.setObjectName(u"label_14")
@@ -211,110 +221,12 @@ class Ui_MainWindow(object):
 
         self.gridLayout_3.addWidget(self.label_14, 0, 0, 1, 1)
 
-        self.line_16 = QFrame(self.scrollAreaWidgetContents)
-        self.line_16.setObjectName(u"line_16")
-        self.line_16.setFrameShadow(QFrame.Plain)
-        self.line_16.setFrameShape(QFrame.HLine)
+        self.line_19 = QFrame(self.scrollAreaWidgetContents)
+        self.line_19.setObjectName(u"line_19")
+        self.line_19.setFrameShadow(QFrame.Plain)
+        self.line_19.setFrameShape(QFrame.HLine)
 
-        self.gridLayout_3.addWidget(self.line_16, 20, 0, 1, 1)
-
-        self.label_4 = QLabel(self.scrollAreaWidgetContents)
-        self.label_4.setObjectName(u"label_4")
-
-        self.gridLayout_3.addWidget(self.label_4, 4, 0, 1, 1)
-
-        self.line_5 = QFrame(self.scrollAreaWidgetContents)
-        self.line_5.setObjectName(u"line_5")
-        self.line_5.setFrameShadow(QFrame.Plain)
-        self.line_5.setFrameShape(QFrame.HLine)
-
-        self.gridLayout_3.addWidget(self.line_5, 6, 1, 1, 1)
-
-        self.thumbsDown_combo = QComboBox(self.scrollAreaWidgetContents)
-        self.thumbsDown_combo.addItem("")
-        self.thumbsDown_combo.setObjectName(u"thumbsDown_combo")
-
-        self.gridLayout_3.addWidget(self.thumbsDown_combo, 23, 1, 1, 1)
-
-        self.line_13 = QFrame(self.scrollAreaWidgetContents)
-        self.line_13.setObjectName(u"line_13")
-        self.line_13.setFrameShadow(QFrame.Plain)
-        self.line_13.setFrameShape(QFrame.HLine)
-
-        self.gridLayout_3.addWidget(self.line_13, 16, 1, 1, 1)
-
-        self.line_9 = QFrame(self.scrollAreaWidgetContents)
-        self.line_9.setObjectName(u"line_9")
-        self.line_9.setFrameShadow(QFrame.Plain)
-        self.line_9.setFrameShape(QFrame.HLine)
-
-        self.gridLayout_3.addWidget(self.line_9, 12, 1, 1, 1)
-
-        self.openHand_swipeRight_combo = QComboBox(self.scrollAreaWidgetContents)
-        self.openHand_swipeRight_combo.addItem("")
-        self.openHand_swipeRight_combo.setObjectName(u"openHand_swipeRight_combo")
-
-        self.gridLayout_3.addWidget(self.openHand_swipeRight_combo, 13, 1, 1, 1)
-
-        self.doubleTap_thumb_combo = QComboBox(self.scrollAreaWidgetContents)
-        self.doubleTap_thumb_combo.addItem("")
-        self.doubleTap_thumb_combo.setObjectName(u"doubleTap_thumb_combo")
-
-        self.gridLayout_3.addWidget(self.doubleTap_thumb_combo, 4, 1, 1, 1)
-
-        self.line_18 = QFrame(self.scrollAreaWidgetContents)
-        self.line_18.setObjectName(u"line_18")
-        self.line_18.setFrameShadow(QFrame.Plain)
-        self.line_18.setFrameShape(QFrame.HLine)
-
-        self.gridLayout_3.addWidget(self.line_18, 22, 0, 1, 1)
-
-        self.grip_hand_combo = QComboBox(self.scrollAreaWidgetContents)
-        self.grip_hand_combo.addItem("")
-        self.grip_hand_combo.setObjectName(u"grip_hand_combo")
-
-        self.gridLayout_3.addWidget(self.grip_hand_combo, 11, 1, 1, 1)
-
-        self.label_5 = QLabel(self.scrollAreaWidgetContents)
-        self.label_5.setObjectName(u"label_5")
-
-        self.gridLayout_3.addWidget(self.label_5, 11, 0, 1, 1)
-
-        self.line_6 = QFrame(self.scrollAreaWidgetContents)
-        self.line_6.setObjectName(u"line_6")
-        self.line_6.setFrameShadow(QFrame.Plain)
-        self.line_6.setFrameShape(QFrame.HLine)
-
-        self.gridLayout_3.addWidget(self.line_6, 10, 0, 1, 1)
-
-        self.label_13 = QLabel(self.scrollAreaWidgetContents)
-        self.label_13.setObjectName(u"label_13")
-
-        self.gridLayout_3.addWidget(self.label_13, 23, 0, 1, 1)
-
-        self.label_10 = QLabel(self.scrollAreaWidgetContents)
-        self.label_10.setObjectName(u"label_10")
-
-        self.gridLayout_3.addWidget(self.label_10, 17, 0, 1, 1)
-
-        self.label_9 = QLabel(self.scrollAreaWidgetContents)
-        self.label_9.setObjectName(u"label_9")
-
-        self.gridLayout_3.addWidget(self.label_9, 15, 0, 1, 1)
-
-        self.line_8 = QFrame(self.scrollAreaWidgetContents)
-        self.line_8.setObjectName(u"line_8")
-        self.line_8.setFrameShadow(QFrame.Plain)
-        self.line_8.setFrameShape(QFrame.HLine)
-
-        self.gridLayout_3.addWidget(self.line_8, 12, 0, 1, 1)
-
-        self.line_4 = QFrame(self.scrollAreaWidgetContents)
-        self.line_4.setObjectName(u"line_4")
-        self.line_4.setFrameShadow(QFrame.Plain)
-        self.line_4.setFrameShape(QFrame.HLine)
-
-        self.gridLayout_3.addWidget(self.line_4, 6, 0, 1, 1)
+        self.gridLayout_3.addWidget(self.line_19, 20, 1, 1, 1)
 
         self.line_3 = QFrame(self.scrollAreaWidgetContents)
         self.line_3.setObjectName(u"line_3")
@@ -323,66 +235,168 @@ class Ui_MainWindow(object):
 
         self.gridLayout_3.addWidget(self.line_3, 2, 1, 1, 1)
 
-        self.line_19 = QFrame(self.scrollAreaWidgetContents)
-        self.line_19.setObjectName(u"line_19")
-        self.line_19.setFrameShadow(QFrame.Plain)
-        self.line_19.setFrameShape(QFrame.HLine)
-
-        self.gridLayout_3.addWidget(self.line_19, 22, 1, 1, 1)
-
-        self.line_17 = QFrame(self.scrollAreaWidgetContents)
-        self.line_17.setObjectName(u"line_17")
-        self.line_17.setFrameShadow(QFrame.Plain)
-        self.line_17.setFrameShape(QFrame.HLine)
-
-        self.gridLayout_3.addWidget(self.line_17, 20, 1, 1, 1)
-
         self.tap_thumb_combo = QComboBox(self.scrollAreaWidgetContents)
         self.tap_thumb_combo.addItem("")
         self.tap_thumb_combo.setObjectName(u"tap_thumb_combo")
 
         self.gridLayout_3.addWidget(self.tap_thumb_combo, 1, 1, 1, 1)
 
-        self.label_6 = QLabel(self.scrollAreaWidgetContents)
-        self.label_6.setObjectName(u"label_6")
+        self.line_17 = QFrame(self.scrollAreaWidgetContents)
+        self.line_17.setObjectName(u"line_17")
+        self.line_17.setFrameShadow(QFrame.Plain)
+        self.line_17.setFrameShape(QFrame.HLine)
 
-        self.gridLayout_3.addWidget(self.label_6, 9, 0, 1, 1)
+        self.gridLayout_3.addWidget(self.line_17, 18, 1, 1, 1)
 
         self.openHand_swipeLeft_combo = QComboBox(self.scrollAreaWidgetContents)
         self.openHand_swipeLeft_combo.addItem("")
         self.openHand_swipeLeft_combo.setObjectName(u"openHand_swipeLeft_combo")
 
-        self.gridLayout_3.addWidget(self.openHand_swipeLeft_combo, 15, 1, 1, 1)
+        self.gridLayout_3.addWidget(self.openHand_swipeLeft_combo, 13, 1, 1, 1)
 
-        self.label_11 = QLabel(self.scrollAreaWidgetContents)
-        self.label_11.setObjectName(u"label_11")
+        self.line_16 = QFrame(self.scrollAreaWidgetContents)
+        self.line_16.setObjectName(u"line_16")
+        self.line_16.setFrameShadow(QFrame.Plain)
+        self.line_16.setFrameShape(QFrame.HLine)
 
-        self.gridLayout_3.addWidget(self.label_11, 19, 0, 1, 1)
-
-        self.label = QLabel(self.scrollAreaWidgetContents)
-        self.label.setObjectName(u"label")
-
-        self.gridLayout_3.addWidget(self.label, 7, 0, 1, 1)
+        self.gridLayout_3.addWidget(self.line_16, 18, 0, 1, 1)
 
         self.line_20 = QFrame(self.scrollAreaWidgetContents)
         self.line_20.setObjectName(u"line_20")
         self.line_20.setFrameShadow(QFrame.Plain)
         self.line_20.setFrameShape(QFrame.HLine)
 
-        self.gridLayout_3.addWidget(self.line_20, 8, 0, 1, 1)
+        self.gridLayout_3.addWidget(self.line_20, 4, 0, 1, 1)
 
-        self.line_21 = QFrame(self.scrollAreaWidgetContents)
-        self.line_21.setObjectName(u"line_21")
-        self.line_21.setFrameShadow(QFrame.Plain)
-        self.line_21.setFrameShape(QFrame.HLine)
+        self.label_11 = QLabel(self.scrollAreaWidgetContents)
+        self.label_11.setObjectName(u"label_11")
 
-        self.gridLayout_3.addWidget(self.line_21, 8, 1, 1, 1)
+        self.gridLayout_3.addWidget(self.label_11, 17, 0, 1, 1)
 
-        self.hold_thumb_combo = QComboBox(self.scrollAreaWidgetContents)
-        self.hold_thumb_combo.addItem("")
-        self.hold_thumb_combo.setObjectName(u"hold_thumb_combo")
+        self.label_4 = QLabel(self.scrollAreaWidgetContents)
+        self.label_4.setObjectName(u"label_4")
 
-        self.gridLayout_3.addWidget(self.hold_thumb_combo, 7, 1, 1, 1)
+        self.gridLayout_3.addWidget(self.label_4, 3, 0, 1, 1)
+
+        self.label_8 = QLabel(self.scrollAreaWidgetContents)
+        self.label_8.setObjectName(u"label_8")
+
+        self.gridLayout_3.addWidget(self.label_8, 11, 0, 1, 1)
+
+        self.label_2 = QLabel(self.scrollAreaWidgetContents)
+        self.label_2.setObjectName(u"label_2")
+        self.label_2.setFrameShape(QFrame.NoFrame)
+
+        self.gridLayout_3.addWidget(self.label_2, 1, 0, 1, 1)
+
+        self.line_4 = QFrame(self.scrollAreaWidgetContents)
+        self.line_4.setObjectName(u"line_4")
+        self.line_4.setFrameShadow(QFrame.Plain)
+        self.line_4.setFrameShape(QFrame.HLine)
+
+        self.gridLayout_3.addWidget(self.line_4, 6, 0, 1, 1)
+
+        self.line_14 = QFrame(self.scrollAreaWidgetContents)
+        self.line_14.setObjectName(u"line_14")
+        self.line_14.setFrameShadow(QFrame.Plain)
+        self.line_14.setFrameShape(QFrame.HLine)
+
+        self.gridLayout_3.addWidget(self.line_14, 16, 0, 1, 1)
+
+        self.verticalSpacer_2 = QSpacerItem(20, 20, QSizePolicy.Minimum, QSizePolicy.Fixed)
+
+        self.gridLayout_3.addItem(self.verticalSpacer_2, 23, 1, 1, 1)
+
+        self.line_12 = QFrame(self.scrollAreaWidgetContents)
+        self.line_12.setObjectName(u"line_12")
+        self.line_12.setFrameShadow(QFrame.Plain)
+        self.line_12.setFrameShape(QFrame.HLine)
+
+        self.gridLayout_3.addWidget(self.line_12, 14, 0, 1, 1)
+
+        self.verticalSpacer = QSpacerItem(20, 20, QSizePolicy.Minimum, QSizePolicy.Fixed)
+
+        self.gridLayout_3.addItem(self.verticalSpacer, 23, 0, 1, 1)
+
+        self.label_13 = QLabel(self.scrollAreaWidgetContents)
+        self.label_13.setObjectName(u"label_13")
+
+        self.gridLayout_3.addWidget(self.label_13, 21, 0, 1, 1)
+
+        self.label_12 = QLabel(self.scrollAreaWidgetContents)
+        self.label_12.setObjectName(u"label_12")
+
+        self.gridLayout_3.addWidget(self.label_12, 19, 0, 1, 1)
+
+        self.grip_hand_combo = QComboBox(self.scrollAreaWidgetContents)
+        self.grip_hand_combo.addItem("")
+        self.grip_hand_combo.setObjectName(u"grip_hand_combo")
+
+        self.gridLayout_3.addWidget(self.grip_hand_combo, 9, 1, 1, 1)
+
+        self.line_5 = QFrame(self.scrollAreaWidgetContents)
+        self.line_5.setObjectName(u"line_5")
+        self.line_5.setFrameShadow(QFrame.Plain)
+        self.line_5.setFrameShape(QFrame.HLine)
+
+        self.gridLayout_3.addWidget(self.line_5, 6, 1, 1, 1)
+
+        self.thumbsUp_combo = QComboBox(self.scrollAreaWidgetContents)
+        self.thumbsUp_combo.addItem("")
+        self.thumbsUp_combo.setObjectName(u"thumbsUp_combo")
+
+        self.gridLayout_3.addWidget(self.thumbsUp_combo, 19, 1, 1, 1)
+
+        self.label_9 = QLabel(self.scrollAreaWidgetContents)
+        self.label_9.setObjectName(u"label_9")
+
+        self.gridLayout_3.addWidget(self.label_9, 13, 0, 1, 1)
+
+        self.line_11 = QFrame(self.scrollAreaWidgetContents)
+        self.line_11.setObjectName(u"line_11")
+        self.line_11.setFrameShadow(QFrame.Plain)
+        self.line_11.setFrameShape(QFrame.HLine)
+
+        self.gridLayout_3.addWidget(self.line_11, 12, 1, 1, 1)
+
+        self.line_15 = QFrame(self.scrollAreaWidgetContents)
+        self.line_15.setObjectName(u"line_15")
+        self.line_15.setFrameShadow(QFrame.Plain)
+        self.line_15.setFrameShape(QFrame.HLine)
+
+        self.gridLayout_3.addWidget(self.line_15, 16, 1, 1, 1)
+
+        self.thumbsDown_combo = QComboBox(self.scrollAreaWidgetContents)
+        self.thumbsDown_combo.addItem("")
+        self.thumbsDown_combo.setObjectName(u"thumbsDown_combo")
+
+        self.gridLayout_3.addWidget(self.thumbsDown_combo, 21, 1, 1, 1)
+
+        self.line_10 = QFrame(self.scrollAreaWidgetContents)
+        self.line_10.setObjectName(u"line_10")
+        self.line_10.setFrameShadow(QFrame.Plain)
+        self.line_10.setFrameShape(QFrame.HLine)
+
+        self.gridLayout_3.addWidget(self.line_10, 12, 0, 1, 1)
+
+        self.label_5 = QLabel(self.scrollAreaWidgetContents)
+        self.label_5.setObjectName(u"label_5")
+
+        self.gridLayout_3.addWidget(self.label_5, 9, 0, 1, 1)
+
+        self.line_22 = QFrame(self.scrollAreaWidgetContents)
+        self.line_22.setObjectName(u"line_22")
+        self.line_22.setFrameShadow(QFrame.Plain)
+        self.line_22.setFrameShape(QFrame.HLine)
+
+        self.gridLayout_3.addWidget(self.line_22, 22, 0, 1, 1)
+
+        self.line_23 = QFrame(self.scrollAreaWidgetContents)
+        self.line_23.setObjectName(u"line_23")
+        self.line_23.setFrameShadow(QFrame.Plain)
+        self.line_23.setFrameShape(QFrame.HLine)
+
+        self.gridLayout_3.addWidget(self.line_23, 22, 1, 1, 1)
 
         self.scrollArea.setWidget(self.scrollAreaWidgetContents)
 
@@ -407,40 +421,40 @@ class Ui_MainWindow(object):
         self.connection_label.setText(QCoreApplication.translate("MainWindow", u"No connection found", None))
         self.connect_push_button.setText(QCoreApplication.translate("MainWindow", u"Connect to glove", None))
         self.label_7.setText(QCoreApplication.translate("MainWindow", u"Navigation Settings", None))
-        self.label_8.setText(QCoreApplication.translate("MainWindow", u"Open hand - Swipe right", None))
-        self.label_2.setText(QCoreApplication.translate("MainWindow", u"Tap thumb sensor", None))
-        self.CCW_index_combo.setItemText(0, QCoreApplication.translate("MainWindow", u"Scroll up", None))
+        self.doubleTap_thumb_combo.setItemText(0, QCoreApplication.translate("MainWindow", u"Right-Click", None))
 
-        self.label_12.setText(QCoreApplication.translate("MainWindow", u"Thumb up", None))
-        self.thumbsUp_combo.setItemText(0, QCoreApplication.translate("MainWindow", u"Volume Up", None))
-
+        self.label_16.setText(QCoreApplication.translate("MainWindow", u"Hold Thumb Sensor", None))
         self.label_15.setText(QCoreApplication.translate("MainWindow", u"Command", None))
         self.CW_index_combo.setItemText(0, QCoreApplication.translate("MainWindow", u"Scroll Down", None))
 
-        self.openHand_swipeDown_combo.setItemText(0, QCoreApplication.translate("MainWindow", u"Minimize Window", None))
-
-        self.label_14.setText(QCoreApplication.translate("MainWindow", u"Gesture Type", None))
-        self.label_4.setText(QCoreApplication.translate("MainWindow", u"Double tap thumb sensor", None))
-        self.thumbsDown_combo.setItemText(0, QCoreApplication.translate("MainWindow", u"Volume Down", None))
-
         self.openHand_swipeRight_combo.setItemText(0, QCoreApplication.translate("MainWindow", u"Next Media", None))
 
-        self.doubleTap_thumb_combo.setItemText(0, QCoreApplication.translate("MainWindow", u"Right-Click", None))
-
-        self.grip_hand_combo.setItemText(0, QCoreApplication.translate("MainWindow", u"Play/Pause Media", None))
-
-        self.label_5.setText(QCoreApplication.translate("MainWindow", u"Grip hand", None))
-        self.label_13.setText(QCoreApplication.translate("MainWindow", u"Thumb down", None))
-        self.label_10.setText(QCoreApplication.translate("MainWindow", u"Counter-clockwise index finger circles", None))
-        self.label_9.setText(QCoreApplication.translate("MainWindow", u"Open hand - Swipe left", None))
-        self.tap_thumb_combo.setItemText(0, QCoreApplication.translate("MainWindow", u"Click", None))
+        self.hold_thumb_combo.setItemText(0, QCoreApplication.translate("MainWindow", u"Toggle Pause Mode", None))
 
         self.label_6.setText(QCoreApplication.translate("MainWindow", u"Open hand - Swipe down", None))
+        self.label_10.setText(QCoreApplication.translate("MainWindow", u"Counter-clockwise index finger circles", None))
+        self.openHand_swipeDown_combo.setItemText(0, QCoreApplication.translate("MainWindow", u"Minimize Window", None))
+
+        self.CCW_index_combo.setItemText(0, QCoreApplication.translate("MainWindow", u"Scroll up", None))
+
+        self.label_14.setText(QCoreApplication.translate("MainWindow", u"Gesture Type", None))
+        self.tap_thumb_combo.setItemText(0, QCoreApplication.translate("MainWindow", u"Click", None))
+
         self.openHand_swipeLeft_combo.setItemText(0, QCoreApplication.translate("MainWindow", u"Previous Media", None))
 
         self.label_11.setText(QCoreApplication.translate("MainWindow", u"Clockwise index finger circles", None))
-        self.label.setText(QCoreApplication.translate("MainWindow", u"Hold thumb sensor", None))
-        self.hold_thumb_combo.setItemText(0, QCoreApplication.translate("MainWindow", u"Switch Mode", None))
+        self.label_4.setText(QCoreApplication.translate("MainWindow", u"Double tap thumb sensor", None))
+        self.label_8.setText(QCoreApplication.translate("MainWindow", u"Open hand - Swipe right", None))
+        self.label_2.setText(QCoreApplication.translate("MainWindow", u"Tap thumb sensor", None))
+        self.label_13.setText(QCoreApplication.translate("MainWindow", u"Thumb down", None))
+        self.label_12.setText(QCoreApplication.translate("MainWindow", u"Thumb up", None))
+        self.grip_hand_combo.setItemText(0, QCoreApplication.translate("MainWindow", u"Play/Pause Media", None))
 
+        self.thumbsUp_combo.setItemText(0, QCoreApplication.translate("MainWindow", u"Volume Up", None))
+
+        self.label_9.setText(QCoreApplication.translate("MainWindow", u"Open hand - Swipe left", None))
+        self.thumbsDown_combo.setItemText(0, QCoreApplication.translate("MainWindow", u"Volume Down", None))
+
+        self.label_5.setText(QCoreApplication.translate("MainWindow", u"Grip hand", None))
     # retranslateUi
 

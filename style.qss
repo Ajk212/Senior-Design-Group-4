@@ -1,0 +1,45 @@
+QWidget {
+    color: #FFFFFF;
+    background-color: #33373b;
+}
+
+
+QPushButton {
+    background-color: #3b6d3f;
+
+    font-size: 18px;
+}
+
+QFrame[frameShape="4"] {
+    color: #000000;
+    background-color: #000000;
+}
+
+QLabel{
+    color: #FFFFFF;
+    font-size: 12px;
+}
+
+QLabel#label_14{
+    border: 2px solid #000000;  
+}
+
+QLabel#label_15{
+    border: 2px solid #000000;  
+}
+
+QScrollArea{
+    border: 2px solid #000000;  
+    background-color: #3b6d3f;
+
+
+}
+
+QComboBox{
+    background-color: #3b6d3f;
+}
+
+QWidget#TitleBar {
+    background-color: #2ABF9E;
+    color: white;
+}

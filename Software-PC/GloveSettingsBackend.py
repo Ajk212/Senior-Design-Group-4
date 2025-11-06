@@ -17,6 +17,8 @@ CHAR_UUID = "0000ff01-0000-1000-8000-00805f9b34fb"     # Characteristic 0xFF01
 from GloveSettingsFrontend import GloveSettingsFrontend
 
 class GloveSettingsBackend(QObject):
+    connection_status_changed = pyqtSignal(bool)
+
     def __init__(self, frontend):
         super().__init__()
         self.frontend = frontend
@@ -33,7 +35,12 @@ class GloveSettingsBackend(QObject):
         # TODO update connection status text, connection button, connection routine etc
         pass
 
-    async def connectGlove(self):
+    def connectGlove(self):
+        self.isConnected = not self.isConnected
+        self.connection_status_changed.emit(self.isConnected)
+        #asyncio.create_task(self.connectGloveAsync())
+
+    async def connectGloveAsync(self):
         print("Searching for HandSense Device...")
 
         device = await BleakScanner.discover()
@@ -121,6 +128,7 @@ class GloveSettingsBackend(QObject):
         #TODO send acknowledgement to glove and pulse haptic motor
         pass
 
+'''
 if __name__ == "__main__":
     app = QApplication(sys.argv)  
     frontend = GloveSettingsFrontend()
@@ -130,3 +138,4 @@ if __name__ == "__main__":
 
     frontend.show()
     sys.exit(app.exec_())
+'''
