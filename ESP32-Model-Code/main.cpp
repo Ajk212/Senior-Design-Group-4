@@ -1,3 +1,21 @@
+#include <stdio.h>
+#include <string.h>
+#include <inttypes.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/event_groups.h"
+#include "driver/i2c.h"
+#include "driver/gpio.h"
+#include "esp_log.h"
+#include "esp_system.h"
+#include "nvs_flash.h"
+#include "esp_bt.h"
+#include "esp_gap_ble_api.h"
+#include "esp_gatts_api.h"
+#include "esp_bt_defs.h"
+#include "esp_bt_main.h"
+#include "esp_gatt_common_api.h"
+#include "imu_ble.h"
 
 #include "models/Lite_LSTM_test.h"
 #include "tensorflow/lite/micro/all_ops_resolver.h"
@@ -9,7 +27,7 @@ constexpr int kTensorArenaSize = 10 * 1024;
 uint8_t tensor_arena[kTensorArenaSize];
 int WINDOW_SIZE = 20;
 
-tfile::MicroInterpreter* interpreter = nullptr;
+tflite::MicroInterpreter* interpreter = nullptr;
 TfLiteTensor* input = nullptr;
 TfLiteTensor* output = nullptr;
 
@@ -22,8 +40,6 @@ const char* gesture_names[] = {
 };
 
 extern "C" void app_main() {
-    delay(2000);
-     
 
     const tflite::Model* model = tflite::GetModel(Lite_LSTM_Test_tflite);
 
@@ -34,8 +50,8 @@ extern "C" void app_main() {
 
     static tflite::AllOpsResolver resolver;
 
-    static tflite::MicroInterpreter static_interpreter(
-        model, resolver, tensor_arena, kTensorArenaSize);
+    static tflite::MicroInterpreter static_interpreter(model, resolver, tensor_arena, kTensorArenaSize);
+    
     interpreter = &static_interpreter;
 
     if (interpreter->AllocateTensors() != kTfLiteOk) {
@@ -62,7 +78,6 @@ extern "C" void app_main() {
             input->data.f[t * 3 + 1] = gy;
             input->data.f[t * 3 + 2] = gz;
 
-            vTaskDelay(pdMS_TO_TICKS(10)); 
         }
 
         //Run model - If failed print and continue
@@ -99,7 +114,9 @@ extern "C" void app_main() {
                 (uint8_t *)ble_buffer,
                 false 
             );
-
-    }
+            if (err != ESP_OK){
+                    ESP_LOGE(GATTS_TAG, "Failed to send data %s", esp_err_to_name(err));
+                }
+        }
     }
 }
