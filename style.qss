@@ -10,6 +10,10 @@ QPushButton {
     font-size: 18px;
 }
 
+QPushButton::hover {
+    background-color: #244b14;
+}
+
 QFrame[frameShape="4"] {
     color: #000000;
     background-color: #000000;
@@ -36,7 +40,14 @@ QScrollArea{
 }
 
 QComboBox{
-    background-color: #3b6d3f;
+    background-color: #8f8f8f;
+    text-align: center; 
+
+}
+
+QComboBox::hover{
+    background-color: #6a6a6a;
+
 }
 
 QWidget#TitleBar {

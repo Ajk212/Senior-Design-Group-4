@@ -4,7 +4,6 @@ import sys
 import asyncio
 from qasync import QEventLoop, asyncSlot
 import tensorflow as tf
-from tensorflow.keras.models import load_model
 from PyQt5.QtWidgets import QApplication
 from GloveSettingsBackend import GloveSettingsBackend
 from GloveSettingsFrontend import GloveSettingsFrontend
