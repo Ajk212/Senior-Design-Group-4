@@ -18,24 +18,24 @@ extern "C"
 #include "esp_gatt_common_api.h"
 
 #include "imu_frame.h"
-#include "Lite_LSTM_Test.h"
+#include "Lite_LSTM_Test4.h"
 #include "mpu6050.h"
 #include "oled.h"
 #include "drv2605.h"
 #include "adc.h"
 }
 
-#include "all_ops_resolver.h"
+#include "tensorflow/lite/micro/micro_mutable_op_resolver.h"
 #include "tensorflow/lite/micro/micro_interpreter.h"
 #include "tensorflow/lite/schema/schema_generated.h"
-// #include "tensorflow/lite/version.h"
+//#include "tensorflow/lite/micro/micro_error_reporter.h"
 
 static const char *HAPTICTAG = "HAPTIC";
 static const char *ADCTAG = "ADC";
 static const char *IMUTAG = "MPU6050";
 
 // Model variables
-constexpr int kTensorArenaSize = 10 * 1024;
+constexpr int kTensorArenaSize = 64 * 1024;
 uint8_t tensor_arena[kTensorArenaSize];
 int WINDOW_SIZE = 20;
 
@@ -488,16 +488,33 @@ extern "C" void app_main(void)
 {
     ESP_LOGI(IMUTAG, "Starting HandSense");
 
-    const tflite::Model *model = tflite::GetModel(Lite_LSTM_Test_tflite);
+    const tflite::Model *model = tflite::GetModel(Lite_LSTM_Test4_tflite);
 
     if (model->version() != TFLITE_SCHEMA_VERSION)
     {
         printf("Model schema version mismatch!\n");
-        while (1)
-            ;
+        while (1);
     }
 
-    static tflite::AllOpsResolver resolver;
+    tflite::MicroMutableOpResolver<15> resolver;
+    resolver.AddFullyConnected();
+    resolver.AddSoftmax();
+    resolver.AddUnidirectionalSequenceLSTM();
+    resolver.AddReshape(); 
+    resolver.AddShape();
+    resolver.AddStridedSlice();
+    resolver.AddTranspose();
+    resolver.AddUnpack();
+    resolver.AddPack();
+    resolver.AddFill();
+    resolver.AddAdd();
+    resolver.AddSplit();
+    resolver.AddLogistic();
+    resolver.AddMul();
+    resolver.AddTanh();
+
+    //static tflite::MicroErrorReporter micro_error_reporter;
+    //tflite::ErrorReporter *error_reporter = &micro_error_reporter;
 
     static tflite::MicroInterpreter static_interpreter(model, resolver, tensor_arena, kTensorArenaSize);
 
@@ -506,8 +523,7 @@ extern "C" void app_main(void)
     if (interpreter->AllocateTensors() != kTfLiteOk)
     {
         printf("Tensor allocation failed!\n");
-        while (1)
-            ;
+        while (1);
     }
 
     input = interpreter->input(0);
@@ -650,7 +666,7 @@ extern "C" void app_main(void)
 
         // Take index and convert to gesture name
         const char *predicted_gesture = gesture_names[max_index];
-
+        ESP_LOGI("GESTURE", "Predicted gesture: %s (confidence=%.2f)", predicted_gesture, max_value);
         // // Send result to buffer
         // char ble_buffer[32];
         // memset(ble_buffer, 0, sizeof(ble_buffer));
