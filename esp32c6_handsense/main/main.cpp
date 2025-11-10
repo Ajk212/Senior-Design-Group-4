@@ -116,6 +116,7 @@ void i2c_scanner(void)
 
 extern "C" void app_main(void)
 {
+    esp_log_level_set("*", ESP_LOG_INFO);
     ESP_LOGI(IMUTAG, "Starting HandSense");
 
     const tflite::Model *model = tflite::GetModel(Lite_LSTM_Test4_tflite);
@@ -123,8 +124,7 @@ extern "C" void app_main(void)
     if (model->version() != TFLITE_SCHEMA_VERSION)
     {
         printf("Model schema version mismatch!\n");
-        while (1)
-            ;
+        while (1);
     }
 
     tflite::MicroMutableOpResolver<15> resolver;
@@ -154,14 +154,13 @@ extern "C" void app_main(void)
     if (interpreter->AllocateTensors() != kTfLiteOk)
     {
         printf("Tensor allocation failed!\n");
-        while (1)
-            ;
+        while (1);
     }
 
     input = interpreter->input(0);
     output = interpreter->output(0);
 
-    printf("Model loaded successfully!\n");
+    ESP_LOGI(IMUTAG, "LSTM Model initialized successfully");
 
     // Initialize Bluetooth
     ble_init();
@@ -169,7 +168,6 @@ extern "C" void app_main(void)
     // Initialize I2C
     ESP_ERROR_CHECK(i2c_master_init());
     ESP_LOGI(IMUTAG, "I2C initialized successfully");
-
     // Test I2C communication by scanning for devices
     i2c_scanner();
 
@@ -271,6 +269,7 @@ extern "C" void app_main(void)
         // }
 
         // Read senor data frame - 20 values of 3-axis gyro
+        
         for (int t = 0; t < WINDOW_SIZE; t++)
         {
             input->data.f[t * 3 + 0] = gyro1_x;
