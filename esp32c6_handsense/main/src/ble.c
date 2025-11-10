@@ -214,30 +214,18 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
                                ESP_GATT_PERM_READ,
                                ESP_GATT_CHAR_PROP_BIT_NOTIFY,
                                NULL, NULL);
-
-        // Add RX Characteristic (Client -> Server)
-        esp_bt_uuid_t char_uuid_rx = {
-            .len = ESP_UUID_LEN_16,
-            .uuid = {.uuid16 = GATTS_CHAR_UUID_RX}};
-
-        esp_ble_gatts_add_char(gl_profile_tab[PROFILE_A_APP_ID].service_handle,
-                               &char_uuid_rx,
-                               ESP_GATT_PERM_WRITE,
-                               ESP_GATT_CHAR_PROP_BIT_WRITE,
-                               NULL, NULL);
         break;
 
     case ESP_GATTS_ADD_CHAR_EVT:
         ESP_LOGI(GATTS_TAG, "Characteristic added, handle %d, uuid 0x%04x",
                  param->add_char.attr_handle, param->add_char.char_uuid.uuid.uuid16);
 
-        // Store handles based on UUID
         if (param->add_char.char_uuid.uuid.uuid16 == GATTS_CHAR_UUID_TX)
         {
             char_handle_tx = param->add_char.attr_handle;
             ESP_LOGI(GATTS_TAG, "TX characteristic handle: %d", char_handle_tx);
 
-            // Add CCCD descriptor for TX characteristic only
+            // Add CCCD descriptor
             esp_bt_uuid_t descr_uuid = {
                 .len = ESP_UUID_LEN_16,
                 .uuid = {.uuid16 = ESP_GATT_UUID_CHAR_CLIENT_CONFIG}};
@@ -246,35 +234,25 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
                                          ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE,
                                          NULL, NULL);
         }
-        else if (param->add_char.char_uuid.uuid.uuid16 == GATTS_CHAR_UUID_RX)
-        {
-            char_handle_rx = param->add_char.attr_handle;
-            ESP_LOGI(GATTS_TAG, "RX characteristic handle: %d", char_handle_rx);
-            // No descriptor needed for RX characteristic
-        }
         break;
 
     case ESP_GATTS_ADD_CHAR_DESCR_EVT:
         ESP_LOGI(GATTS_TAG, "Descriptor added, handle %d", param->add_char_descr.attr_handle);
         descr_handle_tx = param->add_char_descr.attr_handle;
 
-        // Only start service if both characteristics are created
-        if (char_handle_tx != 0 && char_handle_rx != 0)
-        {
-            // Start service and advertising
-            esp_ble_gatts_start_service(gl_profile_tab[PROFILE_A_APP_ID].service_handle);
+        // Start service and advertising with just TX characteristic
+        esp_ble_gatts_start_service(gl_profile_tab[PROFILE_A_APP_ID].service_handle);
 
-            esp_ble_adv_params_t adv_params = {
-                .adv_int_min = 0x20,
-                .adv_int_max = 0x40,
-                .adv_type = ADV_TYPE_IND,
-                .own_addr_type = BLE_ADDR_TYPE_PUBLIC,
-                .channel_map = ADV_CHNL_ALL,
-                .adv_filter_policy = ADV_FILTER_ALLOW_SCAN_ANY_CON_ANY,
-            };
-            esp_ble_gap_start_advertising(&adv_params);
-            ESP_LOGI(GATTS_TAG, "Service started and advertising begun");
-        }
+        esp_ble_adv_params_t adv_params = {
+            .adv_int_min = 0x20,
+            .adv_int_max = 0x40,
+            .adv_type = ADV_TYPE_IND,
+            .own_addr_type = BLE_ADDR_TYPE_PUBLIC,
+            .channel_map = ADV_CHNL_ALL,
+            .adv_filter_policy = ADV_FILTER_ALLOW_SCAN_ANY_CON_ANY,
+        };
+        esp_ble_gap_start_advertising(&adv_params);
+        ESP_LOGI(GATTS_TAG, "Service started and advertising begun");
         break;
 
     case ESP_GATTS_CONNECT_EVT:
