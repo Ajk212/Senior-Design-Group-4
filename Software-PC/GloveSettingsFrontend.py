@@ -68,15 +68,17 @@ class GloveSettingsFrontend(QMainWindow):
             print(f"Failed to load stylesheet: {e}")
 
     def attemptConnection(self):
-        print("Connect button clicked")
+        #print("Connect button clicked")
         self.connect_requested.emit()
 
     def updateConnectionStatus(self, status):
         if status:
             self.ui.connection_label.setText("Connection Established")
+            self.ui.connect_push_button.setDisabled(True)
             
         else:
             self.ui.connection_label.setText("No Connection Found")
+            self.ui.connect_push_button.setDisabled(False)
         
 
     def comboBoxInit(self):

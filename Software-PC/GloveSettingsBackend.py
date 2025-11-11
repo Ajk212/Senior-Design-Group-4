@@ -11,8 +11,8 @@ from comtypes import CLSCTX_ALL
 from PyQt5.QtCore import pyqtSignal
 
 from bleak import BleakScanner, BleakClient
-CHAR_UUID = "0000ff01-0000-1000-8000-00805f9b34fb"     # Characteristic 0xFF01
-
+CHAR_UUID = "0000ff01-0000-1000-8000-00805f9b34fb" 
+UUID_RX = "0000ff02-0000-1000-8000-00805f9b34fb"   
 
 from GloveSettingsFrontend import GloveSettingsFrontend
 
@@ -30,15 +30,9 @@ class GloveSettingsBackend(QObject):
 
         self.currentMode = self.MODES[0]
 
-    def backendUpdate(self):
-        # TODO implement backend update logic
-        # TODO update connection status text, connection button, connection routine etc
-        pass
 
     def connectGlove(self):
-        self.isConnected = not self.isConnected
-        self.connection_status_changed.emit(self.isConnected)
-        #asyncio.create_task(self.connectGloveAsync())
+        asyncio.create_task(self.connectGloveAsync())
 
     async def connectGloveAsync(self):
         print("Searching for HandSense Device...")
@@ -47,17 +41,34 @@ class GloveSettingsBackend(QObject):
         for d in device:
             if d.name and "ESP32C6-HANDSENSE" in d.name:
                 self.client = BleakClient(d.address)
-                await self.client.connect()
-                print(f"Connected to {d.name}")
-                self.isConnected = True
-                self.frontend.updateConnectionStatus(self.isConnected)
-                await asyncio.sleep(3.0)
+                try:
+                    await self.client.connect()
+                    print(f"Connected to {d.name}")
+                    self.isConnected = True
+                    self.connection_status_changed.emit(self.isConnected)
 
-                await self.client.start_notify(CHAR_UUID, self.recieve_detected_gesture)
+                    await asyncio.sleep(2.0)
 
-    def recieve_detected_gesture(self, gesture):
-        # TODO Test recieving gesture from glove
-        pass
+                    await self.client.start_notify(CHAR_UUID, self.recieve_detected_gesture)
+                    print("Notification handler started.")
+
+                    while await self.client.is_connected():
+                        await asyncio.sleep(1.0)
+
+                except Exception as e:
+                    print(f"Failed to connect to device: {e}")
+
+                print("Device disconnected")
+                self.isConnected = False
+                self.connection_status_changed.emit(self.isConnected)
+                await self.attempt_reconnect()
+            
+            
+    def recieve_detected_gesture(self, sender, gesture):
+        print(f"Received gesture: {gesture.decode('utf-8')}")
+        gesture = gesture.decode('utf-8').strip()
+        self.execute_gesture(gesture)
+    
 
     def execute_gesture(self, gesture):
         if self.haltExecution:
@@ -93,21 +104,23 @@ class GloveSettingsBackend(QObject):
                         pyautogui.scroll(500)
                     case "Scroll Down":
                         pyautogui.scroll(-500)
-                    case "Volume Up":
+                    case "tilt_right":
                         self.execute_volume_change(.05)
-                    case "Volume Down":
+                    case "tilt_left":
                         self.execute_volume_change(-.05)
-                        #case move_mouse_up:
-                        #case move_mouse_down:
-                        #case move_mouse_left:
-                        #case move_mouse_right:
-                        #case 
+                    case "mouse_up":
+                        pass
+                    case "mouse_down":
+                        pass
+                    case "mouse_left":
+                        pass
+                    case "mouse_right":
+                        pass
+                    
             else:
-                #print(f"Gesture {gesture} not recognized.")
-                pass
+                print(f"Gesture {gesture} not recognized.")
 
-            #self.send_ACK_to_glove()
-            #self.haltExecution = False
+            asyncio.create_task(self.send_ACK_to_glove())
 
     def change_mode(self):
         current_index = self.MODES.index(self.currentMode)
@@ -124,18 +137,30 @@ class GloveSettingsBackend(QObject):
         new = max(0.0, min(1.0, curr + step))
         volume.SetMasterVolumeLevelScalar(new, None)
 
-    def send_ACK_to_glove():
-        #TODO send acknowledgement to glove and pulse haptic motor
-        pass
+    async def send_ACK_to_glove(self):
+        if self.isConnected:
+            try:
+                asyncio.create_task(self.client.write_gatt_char(UUID_RX, b"ACK"))
+                print("ACK sent to glove.")
+            except Exception as e:
+                print(f"Failed to send ACK: {e}")
+            
 
-'''
-if __name__ == "__main__":
-    app = QApplication(sys.argv)  
-    frontend = GloveSettingsFrontend()
-    backend = GloveSettingsBackend(frontend)
+    def on_disconnect(self, client):
+        print("Device disconnected")
+        self.isConnected = False
+        self.connection_status_changed.emit(self.isConnected)
 
-    frontend.connect_requested.connect(backend.connectGlove)
+    async def attempt_reconnect(self):
+        while not self.isConnected:
+            print("Attempting to reconnect...")
+            try:
+                await self.client.connect()
+                print("Reconnected successfully")
+                self.isConnected = True
+                self.connection_status_changed.emit(self.isConnected)
+                await self.client.start_notify(CHAR_UUID, self.recieve_detected_gesture)
+            except Exception as e:
+                print(f"Reconnection failed: {e}")
+                await asyncio.sleep(5) 
 
-    frontend.show()
-    sys.exit(app.exec_())
-'''
