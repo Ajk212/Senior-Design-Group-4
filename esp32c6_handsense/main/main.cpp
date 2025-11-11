@@ -229,12 +229,12 @@ extern "C" void app_main(void)
         if (imu1_ok && imu2_ok)
         {
             // Log to serial
-            ESP_LOGI(IMUTAG, "IMU1 Accel: X=%.2f, Y=%.2f, Z=%.2f m/s^2", accel1_x, accel1_y, accel1_z);
-            ESP_LOGI(IMUTAG, "IMU1 Gyro:  X=%.2f, Y=%.2f, Z=%.2f deg/s", gyro1_x, gyro1_y, gyro1_z);
-            ESP_LOGI(IMUTAG, "Temps: IMU1=%.1f°F", temp1_f);
-            ESP_LOGI(IMUTAG, "IMU2 Accel: X=%.2f, Y=%.2f, Z=%.2f m/s^2", accel2_x, accel2_y, accel2_z);
-            ESP_LOGI(IMUTAG, "IMU2 Gyro:  X=%.2f, Y=%.2f, Z=%.2f deg/s", gyro2_x, gyro2_y, gyro2_z);
-            ESP_LOGI(IMUTAG, "Temps: IMU2=%.1f°F", temp2_f);
+            // ESP_LOGI(IMUTAG, "IMU1 Accel: X=%.2f, Y=%.2f, Z=%.2f m/s^2", accel1_x, accel1_y, accel1_z);
+            // ESP_LOGI(IMUTAG, "IMU1 Gyro:  X=%.2f, Y=%.2f, Z=%.2f deg/s", gyro1_x, gyro1_y, gyro1_z);
+            // ESP_LOGI(IMUTAG, "Temps: IMU1=%.1f°F", temp1_f);
+            // ESP_LOGI(IMUTAG, "IMU2 Accel: X=%.2f, Y=%.2f, Z=%.2f m/s^2", accel2_x, accel2_y, accel2_z);
+            // ESP_LOGI(IMUTAG, "IMU2 Gyro:  X=%.2f, Y=%.2f, Z=%.2f deg/s", gyro2_x, gyro2_y, gyro2_z);
+            // ESP_LOGI(IMUTAG, "Temps: IMU2=%.1f°F", temp2_f);
             oled_update_display(accel1_x, accel1_y, accel1_z,
                                 accel2_x, accel2_y, accel2_z,
                                 gyro1_x, gyro1_y, gyro1_z,
@@ -317,7 +317,7 @@ extern "C" void app_main(void)
         }
         else
         {
-            ESP_LOGI("MAIN", "Waiting for BLE connection...");
+            ESP_LOGI("MAIN", "Waiting for BLE connection and notifications enabled");
         }
 
         ESP_LOGI(IMUTAG, "---");

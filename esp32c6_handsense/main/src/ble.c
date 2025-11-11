@@ -126,20 +126,20 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
         }
 
         // Configure advertising data
-        esp_ble_adv_data_t adv_data = {};
-        adv_data.set_scan_rsp = false;
-        adv_data.include_name = true;
-        adv_data.include_txpower = true;
-        adv_data.min_interval = 0x0006;
-        adv_data.max_interval = 0x0010;
-        adv_data.appearance = 0x00;
-        adv_data.manufacturer_len = 0;
-        adv_data.p_manufacturer_data = NULL;
-        adv_data.service_data_len = 0;
-        adv_data.p_service_data = NULL;
-        adv_data.service_uuid_len = 16;
-        adv_data.p_service_uuid = adv_service_uuid128;
-        adv_data.flag = (ESP_BLE_ADV_FLAG_GEN_DISC | ESP_BLE_ADV_FLAG_BREDR_NOT_SPT);
+        esp_ble_adv_data_t adv_data = {
+            .set_scan_rsp = false,
+            .include_name = true,
+            .include_txpower = true,
+            .min_interval = 0x0006,
+            .max_interval = 0x0010,
+            .appearance = 0x00,
+            .manufacturer_len = 0,
+            .p_manufacturer_data = NULL,
+            .service_data_len = 0,
+            .p_service_data = NULL,
+            .service_uuid_len = sizeof(adv_service_uuid128),
+            .p_service_uuid = adv_service_uuid128,
+            .flag = (ESP_BLE_ADV_FLAG_GEN_DISC | ESP_BLE_ADV_FLAG_BREDR_NOT_SPT)};
 
         esp_ble_gap_config_adv_data(&adv_data);
 
@@ -160,16 +160,24 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
         ESP_LOGI(GATTS_TAG, "GATT write event, handle %d, len %d",
                  param->write.handle, param->write.len);
 
+        bool responded = false;
+
         // Handle CCCD writes (notification enable/disable)
         if (param->write.handle == descr_handle_tx && param->write.len == 2)
         {
-            uint16_t descr_value = param->write.value[1] << 8 | param->write.value[0];
-            notifications_enabled = (descr_value == 0x0001);
-            ESP_LOGI(GATTS_TAG, "Notifications %s",
-                     notifications_enabled ? "enabled" : "disabled");
+            uint16_t cccd = (uint16_t)param->write.value[0] | ((uint16_t)param->write.value[1] << 8);
+            notifications_enabled = (cccd == 0x0001); // 0x0001 = notifications, 0x0002 = indications
+            ESP_LOGI(GATTS_TAG, "Notifications %s", notifications_enabled ? "enabled" : "disabled");
+            if (param->write.need_rsp)
+            {
+                esp_ble_gatts_send_response(gatts_if, param->write.conn_id,
+                                            param->write.trans_id, ESP_GATT_OK, NULL);
+                responded = true;
+            }
+            break;
         }
         // Handle RX characteristic writes (client acknowledgments)
-        else if (param->write.handle == char_handle_rx)
+        if (param->write.handle == char_handle_rx)
         {
             // Client sends data - treat as acknowledgment
             char ack_data[param->write.len + 1];
@@ -191,8 +199,19 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
                 const char *response = "ACK received";
                 send_string_to_client(response);
             }
-        }
 
+            if (param->write.need_rsp && !responded)
+            {
+                esp_ble_gatts_send_response(gatts_if, param->write.conn_id,
+                                            param->write.trans_id, ESP_GATT_OK, NULL);
+            }
+            break;
+        }
+        if (param->write.need_rsp && !responded)
+        {
+            esp_ble_gatts_send_response(gatts_if, param->write.conn_id,
+                                        param->write.trans_id, ESP_GATT_OK, NULL);
+        }
         break;
 
     case ESP_GATTS_MTU_EVT:
@@ -209,11 +228,13 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
             .len = ESP_UUID_LEN_16,
             .uuid = {.uuid16 = GATTS_CHAR_UUID_TX}};
 
-        esp_ble_gatts_add_char(gl_profile_tab[PROFILE_A_APP_ID].service_handle,
-                               &char_uuid_tx,
-                               ESP_GATT_PERM_READ,
-                               ESP_GATT_CHAR_PROP_BIT_NOTIFY,
-                               NULL, NULL);
+        esp_err_t add_char_ret = esp_ble_gatts_add_char(gl_profile_tab[PROFILE_A_APP_ID].service_handle,
+                                                        &char_uuid_tx,
+                                                        ESP_GATT_PERM_READ,
+                                                        ESP_GATT_CHAR_PROP_BIT_READ | ESP_GATT_CHAR_PROP_BIT_NOTIFY,
+                                                        NULL, NULL);
+        if (add_char_ret)
+            ESP_LOGE(GATTS_TAG, "Add TX char failed: %s", esp_err_to_name(add_char_ret));
         break;
 
     case ESP_GATTS_ADD_CHAR_EVT:
@@ -225,34 +246,64 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
             char_handle_tx = param->add_char.attr_handle;
             ESP_LOGI(GATTS_TAG, "TX characteristic handle: %d", char_handle_tx);
 
-            // Add CCCD descriptor
+            uint8_t cccd_val[2] = {0x00, 0x00};
+            esp_attr_value_t cccd_attr = {
+                .attr_max_len = sizeof(cccd_val),
+                .attr_len = sizeof(cccd_val),
+                .attr_value = cccd_val,
+            };
+
+            // Add CCCD descriptor for TX
             esp_bt_uuid_t descr_uuid = {
                 .len = ESP_UUID_LEN_16,
                 .uuid = {.uuid16 = ESP_GATT_UUID_CHAR_CLIENT_CONFIG}};
-            esp_ble_gatts_add_char_descr(gl_profile_tab[PROFILE_A_APP_ID].service_handle,
-                                         &descr_uuid,
-                                         ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE,
-                                         NULL, NULL);
+
+            esp_err_t ret = esp_ble_gatts_add_char_descr(gl_profile_tab[PROFILE_A_APP_ID].service_handle,
+                                                         &descr_uuid,
+                                                         ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE,
+                                                         &cccd_attr, NULL);
+            if (ret)
+                ESP_LOGE(GATTS_TAG, "Add TX descriptor failed: %s", esp_err_to_name(ret));
+        }
+        else if (param->add_char.char_uuid.uuid.uuid16 == GATTS_CHAR_UUID_RX)
+        {
+            // Store RX characteristic handle
+            char_handle_rx = param->add_char.attr_handle;
+            ESP_LOGI(GATTS_TAG, "RX characteristic handle: %d", char_handle_rx);
+
+            // Start service and advertise after the creation of both characteristics
+            esp_ble_gatts_start_service(gl_profile_tab[PROFILE_A_APP_ID].service_handle);
+
+            esp_ble_adv_params_t adv_params = {
+                .adv_int_min = 0x20,
+                .adv_int_max = 0x40,
+                .adv_type = ADV_TYPE_IND,
+                .own_addr_type = BLE_ADDR_TYPE_PUBLIC,
+                .channel_map = ADV_CHNL_ALL,
+                .adv_filter_policy = ADV_FILTER_ALLOW_SCAN_ANY_CON_ANY,
+            };
+            esp_ble_gap_start_advertising(&adv_params);
+            ESP_LOGI(GATTS_TAG, "Service started and advertising begun");
         }
         break;
 
     case ESP_GATTS_ADD_CHAR_DESCR_EVT:
-        ESP_LOGI(GATTS_TAG, "Descriptor added, handle %d", param->add_char_descr.attr_handle);
         descr_handle_tx = param->add_char_descr.attr_handle;
+        gl_profile_tab[PROFILE_A_APP_ID].descr_handle = param->add_char_descr.attr_handle;
+        ESP_LOGI(GATTS_TAG, "TX descriptor handle: %d", descr_handle_tx);
 
-        // Start service and advertising with just TX characteristic
-        esp_ble_gatts_start_service(gl_profile_tab[PROFILE_A_APP_ID].service_handle);
+        // RX Characteristic (Client -> Server)
+        esp_bt_uuid_t char_uuid_rx = {
+            .len = ESP_UUID_LEN_16,
+            .uuid = {.uuid16 = GATTS_CHAR_UUID_RX}};
 
-        esp_ble_adv_params_t adv_params = {
-            .adv_int_min = 0x20,
-            .adv_int_max = 0x40,
-            .adv_type = ADV_TYPE_IND,
-            .own_addr_type = BLE_ADDR_TYPE_PUBLIC,
-            .channel_map = ADV_CHNL_ALL,
-            .adv_filter_policy = ADV_FILTER_ALLOW_SCAN_ANY_CON_ANY,
-        };
-        esp_ble_gap_start_advertising(&adv_params);
-        ESP_LOGI(GATTS_TAG, "Service started and advertising begun");
+        esp_err_t ret = esp_ble_gatts_add_char(gl_profile_tab[PROFILE_A_APP_ID].service_handle,
+                                               &char_uuid_rx,
+                                               ESP_GATT_PERM_WRITE,
+                                               ESP_GATT_CHAR_PROP_BIT_WRITE,
+                                               NULL, NULL);
+        if (ret)
+            ESP_LOGE(GATTS_TAG, "Add RX char failed: %s", esp_err_to_name(ret));
         break;
 
     case ESP_GATTS_CONNECT_EVT:

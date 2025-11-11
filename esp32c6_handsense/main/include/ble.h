@@ -23,7 +23,7 @@ extern "C"
 #define GATTS_CHAR_UUID_TX 0xFF01 // Server -> Client (notifications)
 #define GATTS_CHAR_UUID_RX 0xFF02 // Client -> Server (writes/acknowledgments)
 #define GATTS_DESCR_UUID 0x3333
-#define GATTS_NUM_HANDLE 4
+#define GATTS_NUM_HANDLE 8
 #define ACK_TIMEOUT_MS 2000
 
 #define PROFILE_NUM 1
