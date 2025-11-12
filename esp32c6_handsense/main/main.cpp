@@ -45,6 +45,10 @@ const char *gesture_names[] = {
     "tilt_backward",
 };
 
+float gyro_window[WINDOW_SIZE][3];
+int curr_index = 0;
+bool window_filled = false;
+
 // I2C Configuration
 #define I2C_MASTER_SCL_IO 21
 #define I2C_MASTER_SDA_IO 22
@@ -270,57 +274,68 @@ extern "C" void app_main(void)
 
         // Read senor data frame - 20 values of 3-axis gyro
         
-        for (int t = 0; t < WINDOW_SIZE; t++)
+        gyro_window[curr_index][0] = gyro1_x;
+        gyro_window[curr_index][1] = gyro1_y;
+        gyro_window[curr_index][2] = gyro1_z;
+
+        curr_index = (curr_index + 1) % WINDOW_SIZE;
+        if (curr_index == 0)
         {
-            input->data.f[t * 3 + 0] = gyro1_x;
-            input->data.f[t * 3 + 1] = gyro1_y;
-            input->data.f[t * 3 + 2] = gyro1_z;
+            window_filled = true;
         }
 
-        // Run model - If failed print and continue
-        if (interpreter->Invoke() != kTfLiteOk)
-        {
-            printf("Model inference failed!\n");
-            continue;
-        }
-
-        // Locate most probable gesture
-        int max_index = 0;
-        float max_value = output->data.f[0];
-        for (int i = 1; i < output->dims->data[1]; i++)
-        {
-            if (output->data.f[i] > max_value)
-            {
-                max_value = output->data.f[i];
-                max_index = i;
+        if(window_filled){
+            for(int t = 0; t < WINDOW_SIZE; t++){
+                int i = (curr_index + t) % WINDOW_SIZE;
+                input->data.f[t * 3 + 0] = gyro_window[i][0];
+                input->data.f[t * 3 + 1] = gyro_window[i][1];
+                input->data.f[t * 3 + 2] = gyro_window[i][2];
             }
-        }
 
-        // Take index and convert to gesture name
-        const char *predicted_gesture = gesture_names[max_index];
-        ESP_LOGI("GESTURE", "Predicted gesture: %s (confidence=%.2f)", predicted_gesture, max_value);
+            // Run model - If failed print and continue
+            if (interpreter->Invoke() != kTfLiteOk){
+                printf("Model inference failed!\n");
+                continue;
+            }
 
-        if (ble_is_connected() && ble_notifications_enabled())
-        {
-            // Send a message and wait for acknowledgment
-            if (send_string_and_wait_ack(predicted_gesture))
+            // Locate most probable gesture
+            int max_index = 0;
+            float max_value = output->data.f[0];
+            for (int i = 1; i < output->dims->data[1]; i++)
             {
-                ESP_LOGI(HAPTICTAG, "Playing long buzz");
-                drv2605_play_effect(drv, DRV2605_EFFECT_LONG_BUZZ);
-                ESP_LOGI("MAIN", "Message delivered successfully");
+                if (output->data.f[i] > max_value)
+                {
+                    max_value = output->data.f[i];
+                    max_index = i;
+                }
+            }
+
+            // Take index and convert to gesture name
+            const char *predicted_gesture = gesture_names[max_index];
+            ESP_LOGI("GESTURE", "Predicted gesture: %s (confidence=%.2f)", predicted_gesture, max_value);
+
+            if (ble_is_connected() && ble_notifications_enabled())
+            {
+                // Send a message and wait for acknowledgment
+                if (send_string_and_wait_ack(predicted_gesture))
+                {
+                    ESP_LOGI(HAPTICTAG, "Playing long buzz");
+                    drv2605_play_effect(drv, DRV2605_EFFECT_LONG_BUZZ);
+                    ESP_LOGI("MAIN", "Message delivered successfully");
+                }
+                else
+                {
+                    ESP_LOGE("MAIN", "Message delivery failed");
+                }
             }
             else
             {
-                ESP_LOGE("MAIN", "Message delivery failed");
+                ESP_LOGI("MAIN", "Waiting for BLE connection and notifications enabled");
             }
-        }
-        else
-        {
-            ESP_LOGI("MAIN", "Waiting for BLE connection and notifications enabled");
-        }
 
-        ESP_LOGI(IMUTAG, "---");
-        vTaskDelay(pdMS_TO_TICKS(1000));
+            ESP_LOGI(IMUTAG, "---");
+            vTaskDelay(pdMS_TO_TICKS(1000));
+        }
     }
 
     drv2605_deinit(drv);
