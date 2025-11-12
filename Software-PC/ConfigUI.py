@@ -30,16 +30,23 @@ class Ui_MainWindow(object):
         self.widget = QWidget(self.centralwidget)
         self.widget.setObjectName(u"widget")
         self.horizontalLayout_3 = QHBoxLayout(self.widget)
+        self.horizontalLayout_3.setSpacing(0)
         self.horizontalLayout_3.setObjectName(u"horizontalLayout_3")
+        self.horizontalLayout_3.setContentsMargins(0, -1, -1, -1)
         self.horizontalLayout_2 = QHBoxLayout()
+        self.horizontalLayout_2.setSpacing(0)
         self.horizontalLayout_2.setObjectName(u"horizontalLayout_2")
         self.label_3 = QLabel(self.widget)
         self.label_3.setObjectName(u"label_3")
+        font = QFont()
+        font.setPointSize(12)
+        self.label_3.setFont(font)
 
         self.horizontalLayout_2.addWidget(self.label_3)
 
         self.connection_label = QLabel(self.widget)
         self.connection_label.setObjectName(u"connection_label")
+        self.connection_label.setFont(font)
 
         self.horizontalLayout_2.addWidget(self.connection_label)
 
@@ -84,7 +91,7 @@ class Ui_MainWindow(object):
         self.scrollArea.setAlignment(Qt.AlignLeading|Qt.AlignLeft|Qt.AlignTop)
         self.scrollAreaWidgetContents = QWidget()
         self.scrollAreaWidgetContents.setObjectName(u"scrollAreaWidgetContents")
-        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 672, 646))
+        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 664, 635))
         sizePolicy.setHeightForWidth(self.scrollAreaWidgetContents.sizePolicy().hasHeightForWidth())
         self.scrollAreaWidgetContents.setSizePolicy(sizePolicy)
         self.gridLayout_3 = QGridLayout(self.scrollAreaWidgetContents)
@@ -417,7 +424,7 @@ class Ui_MainWindow(object):
 
     def retranslateUi(self, MainWindow):
         MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", u"HandSense Configuration", None))
-        self.label_3.setText(QCoreApplication.translate("MainWindow", u"Connection Status    - ", None))
+        self.label_3.setText(QCoreApplication.translate("MainWindow", u"Connection Status - ", None))
         self.connection_label.setText(QCoreApplication.translate("MainWindow", u"No connection found", None))
         self.connect_push_button.setText(QCoreApplication.translate("MainWindow", u"Connect to glove", None))
         self.label_7.setText(QCoreApplication.translate("MainWindow", u"Navigation Settings", None))
