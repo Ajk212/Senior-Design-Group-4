@@ -157,8 +157,9 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
         break;
 
     case ESP_GATTS_WRITE_EVT:
-        ESP_LOGI(GATTS_TAG, "GATT write event, handle %d, len %d",
-                 param->write.handle, param->write.len);
+        ESP_LOGI(GATTS_TAG, "GATT write event, handle %d, len %d, need_rsp=%d, is_prep=%d",
+                 param->write.handle, param->write.len,
+                 param->write.need_rsp, param->write.is_prep);
 
         bool responded = false;
 
@@ -179,25 +180,31 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
         // Handle RX characteristic writes (client acknowledgments)
         if (param->write.handle == char_handle_rx)
         {
+            // If long write/prepare write, handle in prepare buffer and return
+            if (param->write.is_prep)
+            {
+                // handle prepare write chunks here, then respond OK if need_rsp
+                if (param->write.need_rsp)
+                {
+                    esp_ble_gatts_send_response(gatts_if, param->write.conn_id,
+                                                param->write.trans_id, ESP_GATT_OK, NULL);
+                    responded = true;
+                }
+                break;
+            }
             // Client sends data - treat as acknowledgment
             char ack_data[param->write.len + 1];
-            memcpy(ack_data, param->write.value, param->write.len);
-            ack_data[param->write.len] = '\0';
+            size_t n = param->write.len < ESP_GATT_MAX_ATTR_LEN ? param->write.len : ESP_GATT_MAX_ATTR_LEN;
+            memcpy(ack_data, param->write.value, n);
+            ack_data[n] = '\0';
 
             ESP_LOGI(GATTS_TAG, "Client sent: %s", ack_data);
 
             // Set acknowledgment flag if client sends "ACK"
-            if (param->write.len >= 3 && memcmp(param->write.value, "ACK", 3) == 0)
+            if (n >= 3 && memcmp(param->write.value, "ACK", 3) == 0)
             {
                 ack_received = true;
                 ESP_LOGI(GATTS_TAG, "Acknowledgment flag set");
-            }
-
-            // Send acknowledgment confirmation back to client
-            if (notifications_enabled)
-            {
-                const char *response = "ACK received";
-                send_string_to_client(response);
             }
 
             if (param->write.need_rsp && !responded)
