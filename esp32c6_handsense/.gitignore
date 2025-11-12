@@ -1,7 +1,5 @@
-__pycache__/
 build/
 sdkconfig.old
-.clangd
-.devcontainer/
 .vscode/
 managed_components/
+dependencies.lock
