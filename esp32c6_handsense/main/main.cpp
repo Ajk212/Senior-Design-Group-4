@@ -27,11 +27,17 @@ extern "C"
 static const char *HAPTICTAG = "HAPTIC";
 static const char *ADCTAG = "ADC";
 static const char *IMUTAG = "MPU6050";
+static const char *TAG = "MAIN";
+static const char *MODELTAG = "MODEL";
+
+// IMU variables
+static calibration_data_t calib_imu1 = {0};
+static calibration_data_t calib_imu2 = {0};
 
 // Model variables
 constexpr int kTensorArenaSize = 64 * 1024;
 uint8_t tensor_arena[kTensorArenaSize];
-int WINDOW_SIZE = 20;
+constexpr int WINDOW_SIZE = 20;
 
 tflite::MicroInterpreter *interpreter = nullptr;
 TfLiteTensor *input = nullptr;
@@ -49,11 +55,16 @@ float gyro_window[WINDOW_SIZE][3];
 int curr_index = 0;
 bool window_filled = false;
 
+// const char *model_modes[] = {
+//     "locked",
+//     "navigational",
+//     "text"};
+
 // I2C Configuration
 #define I2C_MASTER_SCL_IO 21
 #define I2C_MASTER_SDA_IO 22
 #define I2C_MASTER_NUM I2C_NUM_0
-#define I2C_MASTER_FREQ_HZ 100000
+#define I2C_MASTER_FREQ_HZ 1000000
 #define PULLUP GPIO_PULLUP_ENABLE
 #define I2C_MASTER_TX_BUF_DISABLE 0
 #define I2C_MASTER_RX_BUF_DISABLE 0
@@ -65,6 +76,7 @@ bool window_filled = false;
 #define FLEX_4_ADC_CHANNEL ADC_CHANNEL_1
 #define FLEX_5_ADC_CHANNEL ADC_CHANNEL_4
 #define TOUCH_ADC_CHANNEL ADC_CHANNEL_0
+
 static const adc_sensor_config_t sensor_configs[] = {
     {FLEX_1_ADC_CHANNEL, "Thumb", false},
     {FLEX_2_ADC_CHANNEL, "Pointer", false},
@@ -99,7 +111,7 @@ esp_err_t i2c_master_init(void)
 
 void i2c_scanner(void)
 {
-    ESP_LOGI(IMUTAG, "Scanning I2C bus...");
+    ESP_LOGI(TAG, "Scanning I2C bus...");
     for (uint8_t addr = 0x08; addr <= 0x77; addr++)
     {
         i2c_cmd_handle_t cmd = i2c_cmd_link_create();
@@ -112,23 +124,24 @@ void i2c_scanner(void)
 
         if (ret == ESP_OK)
         {
-            ESP_LOGI(IMUTAG, "Found device at address: 0x%02X", addr);
+            ESP_LOGI(TAG, "Found device at address: 0x%02X", addr);
         }
     }
-    ESP_LOGI(IMUTAG, "I2C scan complete");
+    ESP_LOGI(TAG, "I2C scan complete");
 }
 
 extern "C" void app_main(void)
 {
     esp_log_level_set("*", ESP_LOG_INFO);
-    ESP_LOGI(IMUTAG, "Starting HandSense");
+    ESP_LOGI(TAG, "Starting HandSense");
 
     const tflite::Model *model = tflite::GetModel(Lite_LSTM_Test4_tflite);
 
     if (model->version() != TFLITE_SCHEMA_VERSION)
     {
-        printf("Model schema version mismatch!\n");
-        while (1);
+        ESP_LOGI(MODELTAG, "Model schema version mismatch!");
+        while (1)
+            ;
     }
 
     tflite::MicroMutableOpResolver<15> resolver;
@@ -157,26 +170,27 @@ extern "C" void app_main(void)
 
     if (interpreter->AllocateTensors() != kTfLiteOk)
     {
-        printf("Tensor allocation failed!\n");
-        while (1);
+        ESP_LOGI(MODELTAG, "Tensor allocation failed!");
+        while (1)
+            ;
     }
 
     input = interpreter->input(0);
     output = interpreter->output(0);
 
-    ESP_LOGI(IMUTAG, "LSTM Model initialized successfully");
+    ESP_LOGI(MODELTAG, "LSTM Model initialized successfully");
 
     // Initialize Bluetooth
     ble_init();
 
     // Initialize I2C
     ESP_ERROR_CHECK(i2c_master_init());
-    ESP_LOGI(IMUTAG, "I2C initialized successfully");
+    ESP_LOGI(TAG, "I2C initialized successfully");
     // Test I2C communication by scanning for devices
     i2c_scanner();
 
     // Initialize MPU6050 sensor
-    if (mpu6050_init_both() != ESP_OK)
+    if (mpu6050_init_both_advanced(DLPF_CFG_4, ACCEL_FS_SEL_4G, GYRO_FS_SEL_500DPS) != ESP_OK)
     {
         ESP_LOGE(IMUTAG, "Failed to initialize MPU6050 sensors");
         while (1)
@@ -184,6 +198,9 @@ extern "C" void app_main(void)
             vTaskDelay(pdMS_TO_TICKS(1000));
         }
     }
+
+    // Calibrate both sensors
+    mpu6050_calibrate_both_sensor(&calib_imu1, &calib_imu2);
 
     oled_init_simple();
 
@@ -201,35 +218,31 @@ extern "C" void app_main(void)
 
     ESP_ERROR_CHECK(adc_sensor_init(sensor_configs, 6));
 
-    // Set calibration values for flex sensors
-    flex_sensor_set_calibration(FLEX_1_ADC_CHANNEL, 1365, 1392, 450, 500);
-    flex_sensor_set_calibration(FLEX_2_ADC_CHANNEL, 1175, 1200, 450, 500);
-    flex_sensor_set_calibration(FLEX_3_ADC_CHANNEL, 1275, 1300, 450, 500);
-    flex_sensor_set_calibration(FLEX_4_ADC_CHANNEL, 1250, 1265, 450, 500);
-    flex_sensor_set_calibration(FLEX_5_ADC_CHANNEL, 1105, 1125, 450, 500);
+    calibrate_all_flex_sensors();
 
-    ESP_LOGI(IMUTAG, "All devices initialized, starting readings...");
+    ESP_LOGI(TAG, "All devices initialized, starting readings...");
 
     // Data variables
-    float accel1_x, accel1_y, accel1_z, gyro1_x, gyro1_y, gyro1_z, temp1_f;
-    float accel2_x, accel2_y, accel2_z, gyro2_x, gyro2_y, gyro2_z, temp2_f;
+    imu_data_t imu_data_1, imu_data_2;
 
     while (1)
     {
-        // Read IMU 1
-        bool imu1_ok = (mpu6050_read_all_data(MPU6050_I2C_ADDR_1,
-                                              &accel1_x, &accel1_y, &accel1_z,
-                                              &gyro1_x, &gyro1_y, &gyro1_z,
-                                              &temp1_f) == ESP_OK);
 
-        // Read IMU 1
+        bool imu1_ok = (mpu6050_read_all_data(MPU6050_I2C_ADDR_1,
+                                              &imu_data_1.ax, &imu_data_1.ay, &imu_data_1.az,
+                                              &imu_data_1.gx, &imu_data_1.gy, &imu_data_1.gz,
+                                              &imu_data_1.temperature) == ESP_OK);
+
         bool imu2_ok = (mpu6050_read_all_data(MPU6050_I2C_ADDR_2,
-                                              &accel2_x, &accel2_y, &accel2_z,
-                                              &gyro2_x, &gyro2_y, &gyro2_z,
-                                              &temp2_f) == ESP_OK);
+                                              &imu_data_2.ax, &imu_data_2.ay, &imu_data_2.az,
+                                              &imu_data_2.gx, &imu_data_2.gy, &imu_data_2.gz,
+                                              &imu_data_2.temperature) == ESP_OK);
 
         if (imu1_ok && imu2_ok)
         {
+            apply_calibration(&imu_data_1, &calib_imu1);
+            apply_calibration(&imu_data_2, &calib_imu2);
+
             // Log to serial
             // ESP_LOGI(IMUTAG, "IMU1 Accel: X=%.2f, Y=%.2f, Z=%.2f m/s^2", accel1_x, accel1_y, accel1_z);
             // ESP_LOGI(IMUTAG, "IMU1 Gyro:  X=%.2f, Y=%.2f, Z=%.2f deg/s", gyro1_x, gyro1_y, gyro1_z);
@@ -237,11 +250,12 @@ extern "C" void app_main(void)
             // ESP_LOGI(IMUTAG, "IMU2 Accel: X=%.2f, Y=%.2f, Z=%.2f m/s^2", accel2_x, accel2_y, accel2_z);
             // ESP_LOGI(IMUTAG, "IMU2 Gyro:  X=%.2f, Y=%.2f, Z=%.2f deg/s", gyro2_x, gyro2_y, gyro2_z);
             // ESP_LOGI(IMUTAG, "Temps: IMU2=%.1f°F", temp2_f);
-            oled_update_display(accel1_x, accel1_y, accel1_z,
-                                accel2_x, accel2_y, accel2_z,
-                                gyro1_x, gyro1_y, gyro1_z,
-                                gyro2_x, gyro2_y, gyro2_z,
-                                temp1_f, temp2_f);
+
+            oled_update_display(imu_data_1.ax, imu_data_1.ay, imu_data_1.az,
+                                imu_data_2.ax, imu_data_2.ay, imu_data_2.az,
+                                imu_data_1.gx, imu_data_1.gy, imu_data_1.gz,
+                                imu_data_2.gx, imu_data_2.gy, imu_data_2.gz,
+                                imu_data_1.temperature, imu_data_2.temperature);
 
             // vTaskDelay(pdMS_TO_TICKS(2000));
         }
@@ -250,33 +264,47 @@ extern "C" void app_main(void)
             ESP_LOGE(IMUTAG, "Failed to read IMU");
         }
 
-        // // Read all sensors
-        // for (int i = 0; i < sizeof(sensor_configs) / sizeof(sensor_configs[0]); i++)
+        // Data variable
+        float flex1_angle, flex2_angle, flex3_angle, flex4_angle, flex5_angle;
+
+        // flex1_angle = flex_sensor_get_angle(FLEX_1_ADC_CHANNEL);
+        // flex2_angle = flex_sensor_get_angle(FLEX_2_ADC_CHANNEL);
+        // flex3_angle = flex_sensor_get_angle(FLEX_3_ADC_CHANNEL);
+        // flex4_angle = flex_sensor_get_angle(FLEX_4_ADC_CHANNEL);
+        // flex5_angle = flex_sensor_get_angle(FLEX_5_ADC_CHANNEL);
+
+        // if (adc_sensor_read_voltage(TOUCH_ADC_CHANNEL) > 500)
         // {
-        //     adc_channel_t channel = sensor_configs[i].channel;
-        //     const char *name = sensor_configs[i].name;
-        //     bool is_touch = sensor_configs[i].is_touch_sensor;
-
-        //     int raw = adc_sensor_read_raw(channel);
-        //     int voltage = adc_sensor_read_voltage(channel);
-
-        //     if (is_touch)
-        //     {
-        //         ESP_LOGI(ADCTAG, "%s: Raw: %d, Voltage: %d mV", name, raw, voltage);
-        //     }
-        //     else
-        //     {
-        //         float angle = flex_sensor_get_angle(channel);
-        //         ESP_LOGI(ADCTAG, "%s: Raw: %d, Voltage: %d mV, Angle: %.1f°",
-        //                  name, raw, voltage, angle);
-        //     }
+        //     // toggle model modes
         // }
 
+        // Read all sensors
+        for (int i = 0; i < sizeof(sensor_configs) / sizeof(sensor_configs[0]); i++)
+        {
+            adc_channel_t channel = sensor_configs[i].channel;
+            const char *name = sensor_configs[i].name;
+            bool is_touch = sensor_configs[i].is_touch_sensor;
+
+            int raw = adc_sensor_read_raw(channel);
+            int voltage = adc_sensor_read_voltage(channel);
+
+            if (is_touch)
+            {
+                ESP_LOGI(ADCTAG, "%s: Raw: %d, Voltage: %d mV", name, raw, voltage);
+            }
+            else
+            {
+                float angle = flex_sensor_get_angle(channel);
+                ESP_LOGI(ADCTAG, "%s: Raw: %d, Voltage: %d mV, Angle: %.1f°",
+                         name, raw, voltage, angle);
+            }
+        }
+
         // Read senor data frame - 20 values of 3-axis gyro
-        
-        gyro_window[curr_index][0] = gyro1_x;
-        gyro_window[curr_index][1] = gyro1_y;
-        gyro_window[curr_index][2] = gyro1_z;
+
+        gyro_window[curr_index][0] = imu_data_1.ax;
+        gyro_window[curr_index][1] = imu_data_1.ay;
+        gyro_window[curr_index][2] = imu_data_1.az;
 
         curr_index = (curr_index + 1) % WINDOW_SIZE;
         if (curr_index == 0)
@@ -284,8 +312,10 @@ extern "C" void app_main(void)
             window_filled = true;
         }
 
-        if(window_filled){
-            for(int t = 0; t < WINDOW_SIZE; t++){
+        if (window_filled)
+        {
+            for (int t = 0; t < WINDOW_SIZE; t++)
+            {
                 int i = (curr_index + t) % WINDOW_SIZE;
                 input->data.f[t * 3 + 0] = gyro_window[i][0];
                 input->data.f[t * 3 + 1] = gyro_window[i][1];
@@ -293,8 +323,9 @@ extern "C" void app_main(void)
             }
 
             // Run model - If failed print and continue
-            if (interpreter->Invoke() != kTfLiteOk){
-                printf("Model inference failed!\n");
+            if (interpreter->Invoke() != kTfLiteOk)
+            {
+                ESP_LOGI(MODELTAG, "Model inference failed!");
                 continue;
             }
 
@@ -312,7 +343,7 @@ extern "C" void app_main(void)
 
             // Take index and convert to gesture name
             const char *predicted_gesture = gesture_names[max_index];
-            ESP_LOGI("GESTURE", "Predicted gesture: %s (confidence=%.2f)", predicted_gesture, max_value);
+            ESP_LOGI(MODELTAG, "Predicted gesture: %s (confidence=%.2f)", predicted_gesture, max_value);
 
             if (ble_is_connected() && ble_notifications_enabled())
             {
@@ -321,11 +352,14 @@ extern "C" void app_main(void)
                 {
                     ESP_LOGI(HAPTICTAG, "Playing long buzz");
                     drv2605_play_effect(drv, DRV2605_EFFECT_LONG_BUZZ);
+                    // OLED update gesture field
                     ESP_LOGI("MAIN", "Message delivered successfully");
                 }
                 else
                 {
                     ESP_LOGE("MAIN", "Message delivery failed");
+                    ESP_LOGI(HAPTICTAG, "Playing long buzz");
+                    drv2605_play_effect(drv, DRV2605_EFFECT_DOUBLE_CLICK);
                 }
             }
             else
@@ -333,8 +367,8 @@ extern "C" void app_main(void)
                 ESP_LOGI("MAIN", "Waiting for BLE connection and notifications enabled");
             }
 
-            ESP_LOGI(IMUTAG, "---");
-            vTaskDelay(pdMS_TO_TICKS(1000));
+            ESP_LOGI(TAG, "---");
+            vTaskDelay(pdMS_TO_TICKS(50));
         }
     }
 
