@@ -11,8 +11,10 @@ from comtypes import CLSCTX_ALL
 from PyQt5.QtCore import pyqtSignal
 
 from bleak import BleakScanner, BleakClient
-CHAR_UUID = "0000ff01-0000-1000-8000-00805f9b34fb" 
-UUID_RX = "0000ff02-0000-1000-8000-00805f9b34fb"   
+SERVICE_UUID = "000000ff-0000-1000-8000-00805f9b34fb"  # 0x00FF 
+TX_UUID      = "0000ff01-0000-1000-8000-00805f9b34fb"  # 0xFF01 (read/notify)
+RX_UUID      = "0000ff02-0000-1000-8000-00805f9b34fb"  # 0xFF02 (write)
+CCCD_UUID     = "00002902-0000-1000-8000-00805f9b34fb"  # CCCD
 
 from GloveSettingsFrontend import GloveSettingsFrontend
 
@@ -137,7 +139,7 @@ class GloveSettingsBackend(QObject):
     async def send_ACK_to_glove(self):
         if self.isConnected:
             try:
-                asyncio.create_task(self.client.write_gatt_char(UUID_RX, b"ACK"))
+                asyncio.create_task(self.client.write_gatt_char(RX_UUID, b"ACK"))
                 print("ACK sent to glove.")
             except Exception as e:
                 print(f"Failed to send ACK: {e}")
@@ -156,7 +158,7 @@ class GloveSettingsBackend(QObject):
                 print("Reconnected successfully")
                 self.isConnected = True
                 self.connection_status_changed.emit(self.isConnected)
-                await self.client.start_notify(CHAR_UUID, self.recieve_detected_gesture)
+                await self.client.start_notify(TX_UUID, self.recieve_detected_gesture)
             except Exception as e:
                 print(f"Reconnection failed: {e}")
                 await asyncio.sleep(5) 
