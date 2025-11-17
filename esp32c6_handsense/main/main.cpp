@@ -24,11 +24,7 @@ extern "C"
 #include "tensorflow/lite/schema/schema_generated.h"
 // #include "tensorflow/lite/micro/micro_error_reporter.h"
 
-static const char *HAPTICTAG = "HAPTIC";
-static const char *ADCTAG = "ADC";
-static const char *IMUTAG = "MPU6050";
 static const char *TAG = "MAIN";
-static const char *MODELTAG = "MODEL";
 
 // IMU variables
 static calibration_data_t calib_imu1 = {0};
@@ -139,7 +135,7 @@ extern "C" void app_main(void)
 
     if (model->version() != TFLITE_SCHEMA_VERSION)
     {
-        ESP_LOGI(MODELTAG, "Model schema version mismatch!");
+        ESP_LOGI(TAG, "Model schema version mismatch!");
         while (1)
             ;
     }
@@ -170,7 +166,7 @@ extern "C" void app_main(void)
 
     if (interpreter->AllocateTensors() != kTfLiteOk)
     {
-        ESP_LOGI(MODELTAG, "Tensor allocation failed!");
+        ESP_LOGI(TAG, "Tensor allocation failed!");
         while (1)
             ;
     }
@@ -178,7 +174,7 @@ extern "C" void app_main(void)
     input = interpreter->input(0);
     output = interpreter->output(0);
 
-    ESP_LOGI(MODELTAG, "LSTM Model initialized successfully");
+    ESP_LOGI(TAG, "LSTM Model initialized successfully");
 
     // Initialize Bluetooth
     ble_init();
@@ -192,7 +188,7 @@ extern "C" void app_main(void)
     // Initialize MPU6050 sensor
     if (mpu6050_init_both_advanced(DLPF_CFG_4, ACCEL_FS_SEL_4G, GYRO_FS_SEL_500DPS) != ESP_OK)
     {
-        ESP_LOGE(IMUTAG, "Failed to initialize MPU6050 sensors");
+        ESP_LOGE(TAG, "Failed to initialize MPU6050 sensors");
         while (1)
         {
             vTaskDelay(pdMS_TO_TICKS(1000));
@@ -212,7 +208,7 @@ extern "C" void app_main(void)
     drv2605_handle_t drv = drv2605_init(&drv_config);
     if (drv == NULL)
     {
-        ESP_LOGE(HAPTICTAG, "Failed to initialize DRV2605");
+        ESP_LOGE(TAG, "Failed to initialize DRV2605");
         return;
     }
 
@@ -244,61 +240,50 @@ extern "C" void app_main(void)
             apply_calibration(&imu_data_2, &calib_imu2);
 
             // Log to serial
-            // ESP_LOGI(IMUTAG, "IMU1 Accel: X=%.2f, Y=%.2f, Z=%.2f m/s^2", accel1_x, accel1_y, accel1_z);
-            // ESP_LOGI(IMUTAG, "IMU1 Gyro:  X=%.2f, Y=%.2f, Z=%.2f deg/s", gyro1_x, gyro1_y, gyro1_z);
-            // ESP_LOGI(IMUTAG, "Temps: IMU1=%.1f°F", temp1_f);
-            // ESP_LOGI(IMUTAG, "IMU2 Accel: X=%.2f, Y=%.2f, Z=%.2f m/s^2", accel2_x, accel2_y, accel2_z);
-            // ESP_LOGI(IMUTAG, "IMU2 Gyro:  X=%.2f, Y=%.2f, Z=%.2f deg/s", gyro2_x, gyro2_y, gyro2_z);
-            // ESP_LOGI(IMUTAG, "Temps: IMU2=%.1f°F", temp2_f);
+            // ESP_LOGI(TAG, "IMU1 Accel: X=%.2f, Y=%.2f, Z=%.2f m/s^2", accel1_x, accel1_y, accel1_z);
+            // ESP_LOGI(TAG, "IMU1 Gyro:  X=%.2f, Y=%.2f, Z=%.2f deg/s", gyro1_x, gyro1_y, gyro1_z);
+            // ESP_LOGI(TAG, "Temps: IMU1=%.1f°F", temp1_f);
+            // ESP_LOGI(TAG, "IMU2 Accel: X=%.2f, Y=%.2f, Z=%.2f m/s^2", accel2_x, accel2_y, accel2_z);
+            // ESP_LOGI(TAG, "IMU2 Gyro:  X=%.2f, Y=%.2f, Z=%.2f deg/s", gyro2_x, gyro2_y, gyro2_z);
+            // ESP_LOGI(TAG, "Temps: IMU2=%.1f°F", temp2_f);
 
             oled_update_display(imu_data_1.ax, imu_data_1.ay, imu_data_1.az,
                                 imu_data_2.ax, imu_data_2.ay, imu_data_2.az,
                                 imu_data_1.gx, imu_data_1.gy, imu_data_1.gz,
                                 imu_data_2.gx, imu_data_2.gy, imu_data_2.gz,
                                 imu_data_1.temperature, imu_data_2.temperature);
-
-            // vTaskDelay(pdMS_TO_TICKS(2000));
         }
         else
         {
-            ESP_LOGE(IMUTAG, "Failed to read IMU");
+            ESP_LOGE(TAG, "Failed to read IMU");
         }
 
         // Data variable
-        float flex1_angle, flex2_angle, flex3_angle, flex4_angle, flex5_angle;
+        float flex_angles[5] = {0};
 
-        // flex1_angle = flex_sensor_get_angle(FLEX_1_ADC_CHANNEL);
-        // flex2_angle = flex_sensor_get_angle(FLEX_2_ADC_CHANNEL);
-        // flex3_angle = flex_sensor_get_angle(FLEX_3_ADC_CHANNEL);
-        // flex4_angle = flex_sensor_get_angle(FLEX_4_ADC_CHANNEL);
-        // flex5_angle = flex_sensor_get_angle(FLEX_5_ADC_CHANNEL);
+        // Read all sensors
+        // for (int i = 0; i < sizeof(sensor_configs) / sizeof(sensor_configs[0]); i++)
+        // {
+        //     adc_channel_t channel = sensor_configs[i].channel;
+        //     const char *name = sensor_configs[i].name;
+        //     bool is_touch = sensor_configs[i].is_touch_sensor;
+
+        //     int raw = adc_sensor_read_raw(channel);
+        //     int voltage = adc_sensor_read_voltage(channel);
 
         // if (adc_sensor_read_voltage(TOUCH_ADC_CHANNEL) > 500)
         // {
         //     // toggle model modes
         // }
-
-        // Read all sensors
-        for (int i = 0; i < sizeof(sensor_configs) / sizeof(sensor_configs[0]); i++)
-        {
-            adc_channel_t channel = sensor_configs[i].channel;
-            const char *name = sensor_configs[i].name;
-            bool is_touch = sensor_configs[i].is_touch_sensor;
-
-            int raw = adc_sensor_read_raw(channel);
-            int voltage = adc_sensor_read_voltage(channel);
-
-            if (is_touch)
-            {
-                ESP_LOGI(ADCTAG, "%s: Raw: %d, Voltage: %d mV", name, raw, voltage);
-            }
-            else
-            {
-                float angle = flex_sensor_get_angle(channel);
-                ESP_LOGI(ADCTAG, "%s: Raw: %d, Voltage: %d mV, Angle: %.1f°",
-                         name, raw, voltage, angle);
-            }
-        }
+        //         ESP_LOGI(TAG, "%s: Raw: %d, Voltage: %d mV", name, raw, voltage);
+        //     }
+        //     else
+        //     {
+        //         flex_angle[i] = flex_sensor_get_angle(channel);
+        //         ESP_LOGI(TAG, "%s: Raw: %d, Voltage: %d mV, Angle: %.1f°",
+        //                  name, raw, voltage, angle);
+        //     }
+        // }
 
         // Read senor data frame - 20 values of 3-axis gyro
 
@@ -325,7 +310,7 @@ extern "C" void app_main(void)
             // Run model - If failed print and continue
             if (interpreter->Invoke() != kTfLiteOk)
             {
-                ESP_LOGI(MODELTAG, "Model inference failed!");
+                ESP_LOGI(TAG, "Model inference failed!");
                 continue;
             }
 
@@ -343,23 +328,23 @@ extern "C" void app_main(void)
 
             // Take index and convert to gesture name
             const char *predicted_gesture = gesture_names[max_index];
-            ESP_LOGI(MODELTAG, "Predicted gesture: %s (confidence=%.2f)", predicted_gesture, max_value);
+            ESP_LOGI(TAG, "Predicted gesture: %s (confidence=%.2f)", predicted_gesture, max_value);
 
             if (ble_is_connected() && ble_notifications_enabled())
             {
                 // Send a message and wait for acknowledgment
                 if (send_string_and_wait_ack(predicted_gesture))
                 {
-                    ESP_LOGI(HAPTICTAG, "Playing long buzz");
-                    drv2605_play_effect(drv, DRV2605_EFFECT_LONG_BUZZ);
+                    // ESP_LOGI(TAG, "Playing long buzz");
+                    // drv2605_play_effect(drv, DRV2605_EFFECT_LONG_BUZZ);
                     // OLED update gesture field
                     ESP_LOGI("MAIN", "Message delivered successfully");
                 }
                 else
                 {
                     ESP_LOGE("MAIN", "Message delivery failed");
-                    ESP_LOGI(HAPTICTAG, "Playing long buzz");
-                    drv2605_play_effect(drv, DRV2605_EFFECT_DOUBLE_CLICK);
+                    // ESP_LOGI(TAG, "Playing long buzz");
+                    // drv2605_play_effect(drv, DRV2605_EFFECT_DOUBLE_CLICK);
                 }
             }
             else
@@ -372,5 +357,6 @@ extern "C" void app_main(void)
         }
     }
 
-    drv2605_deinit(drv);
+    // drv2605_deinit(drv);
+    // adc_sensor_deinit();
 }
