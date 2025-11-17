@@ -41,27 +41,13 @@ class GloveSettingsBackend(QObject):
         for d in device:
             if d.name and "ESP32C6-HANDSENSE" in d.name:
                 self.client = BleakClient(d.address)
-                try:
-                    await self.client.connect()
-                    print(f"Connected to {d.name}")
-                    self.isConnected = True
-                    self.connection_status_changed.emit(self.isConnected)
+                await self.client.connect()
+                print(f"Connected to {d.name}")
+                self.isConnected = True
+                self.frontend.updateConnectionStatus(self.isConnected)
+                await asyncio.sleep(3.0)
 
-                    await asyncio.sleep(2.0)
-
-                    await self.client.start_notify(CHAR_UUID, self.recieve_detected_gesture)
-                    print("Notification handler started.")
-
-                    while await self.client.is_connected():
-                        await asyncio.sleep(1.0)
-
-                except Exception as e:
-                    print(f"Failed to connect to device: {e}")
-
-                print("Device disconnected")
-                self.isConnected = False
-                self.connection_status_changed.emit(self.isConnected)
-                await self.attempt_reconnect()
+                await self.client.start_notify(CHAR_UUID, self.recieve_detected_gesture)
             
             
     def recieve_detected_gesture(self, sender, gesture):
@@ -74,7 +60,7 @@ class GloveSettingsBackend(QObject):
         if self.haltExecution:
             self.haltExecution = True
             combo_map = self.frontend.GESTURE_MAP
-            if gesture == "tilt_left" or gesture == "tilt_right":
+            if gesture == "tilt_left" or gesture == "tilt_right" or gesture == "tilt_forward" or gesture == "tilt_backward":
                 action = gesture
                 #action = combo_map[gesture].currentText()
                 #print(f"Executing action: {action}")
@@ -105,9 +91,19 @@ class GloveSettingsBackend(QObject):
                     case "Scroll Down":
                         pyautogui.scroll(-500)
                     case "tilt_right":
-                        self.execute_volume_change(.05)
+                        pyautogui.moveRel(50, 0, duration=0.2)
+                        print("Moving Mouse Right")
+                        #self.execute_volume_change(.05)
                     case "tilt_left":
-                        self.execute_volume_change(-.05)
+                        pyautogui.moveRel(-50, 0, duration=0.2)
+                        print("Moving Mouse Left")
+                        #self.execute_volume_change(-.05)
+                    case "tilt_forward":
+                        print("Moving Mouse Up")
+                        pyautogui.moveRel(0, -50, duration=0.2)
+                    case "tilt_backward":
+                        print("Moving Mouse Down")
+                        pyautogui.moveRel(0, 50, duration=0.2)
                     case "mouse_up":
                         pass
                     case "mouse_down":
@@ -118,7 +114,8 @@ class GloveSettingsBackend(QObject):
                         pass
                     
             else:
-                print(f"Gesture {gesture} not recognized.")
+                #print(f"Gesture {gesture} not recognized.")
+                pass
 
             asyncio.create_task(self.send_ACK_to_glove())
 

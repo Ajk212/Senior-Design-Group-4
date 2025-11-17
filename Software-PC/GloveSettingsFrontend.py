@@ -6,6 +6,8 @@ from PyQt5.QtGui import QIcon
 
 class GloveSettingsFrontend(QMainWindow):
     connect_requested = pyqtSignal()
+    window_hidden = pyqtSignal()
+
     def __init__(self):
         super().__init__()
         self.ui = configUI()
@@ -66,6 +68,11 @@ class GloveSettingsFrontend(QMainWindow):
                 self.setStyleSheet(style)
         except Exception as e:
             print(f"Failed to load stylesheet: {e}")
+
+    def closeEvent(self, event):
+        event.ignore()
+        self.hide()
+        self.window_hidden.emit()
 
     def attemptConnection(self):
         #print("Connect button clicked")

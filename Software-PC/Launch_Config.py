@@ -21,11 +21,20 @@ if __name__ == "__main__":
 
     frontend.connect_requested.connect(backend.connectGlove)
     backend.connection_status_changed.connect(frontend.updateConnectionStatus)
-
+ 
 
     frontend.show()
 
-    with loop:
-        loop.run_forever()
+    try:
+        with loop:
+            loop.run_forever()
+    except KeyboardInterrupt:
+        print("Application closed by user.")
+        loop.stop()
+        app.quit()
+
+    #with loop:
+    #    loop.run_forever()
+
 
     
