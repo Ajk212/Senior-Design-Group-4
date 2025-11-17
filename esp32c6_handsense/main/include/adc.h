@@ -27,11 +27,9 @@ extern "C"
     esp_err_t adc_sensor_init(const adc_sensor_config_t *configs, size_t count);
 
     /**
-     * @brief Calibrate a specific flex sensor (not for touch sensors)
-     *
-     * @param channel ADC channel to calibrate
+     * @brief Calibrate all flex sensor (not for touch sensors)
      */
-    void adc_sensor_calibrate_channel(adc_channel_t channel);
+    void calibrate_all_flex_sensors(void);
 
     /**
      * @brief Get raw ADC value for a specific channel

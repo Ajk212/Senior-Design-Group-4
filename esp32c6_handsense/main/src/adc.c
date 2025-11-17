@@ -26,8 +26,8 @@ typedef struct
     const char *name;
     bool is_touch_sensor;
     bool configured;
-    float straight_adc_value;
-    float bent_adc_value;
+    float raw_straight;
+    float raw_bent;
     float voltage_straight;
     float voltage_bent;
     adc_cali_handle_t cali_handle;
@@ -44,7 +44,7 @@ static bool adc_calibration_init(adc_unit_t unit, adc_channel_t channel, adc_att
 static void adc_calibration_deinit(adc_cali_handle_t handle);
 static float calculate_bend_angle_normalized(float normalized_value);
 static float calculate_bend_angle_from_voltage(int voltage_mv, float voltage_straight, float voltage_bent);
-static float calculate_bend_angle_from_raw(int raw_adc, float adc_straight, float adc_bent);
+static float calculate_bend_angle_from_raw(int raw_adc, float raw_straight, float raw_bent);
 
 esp_err_t adc_sensor_init(const adc_sensor_config_t *configs, size_t count)
 {
@@ -113,10 +113,10 @@ esp_err_t adc_sensor_init(const adc_sensor_config_t *configs, size_t count)
         // Set default calibration values for flex sensors
         if (!configs[i].is_touch_sensor)
         {
-            sensors[channel].straight_adc_value = 715.0f;
-            sensors[channel].bent_adc_value = 225.0f;
-            sensors[channel].voltage_straight = 500.0f;
-            sensors[channel].voltage_bent = 2500.0f;
+            sensors[channel].raw_straight = 450.0f;
+            sensors[channel].raw_bent = 1250.0f;
+            sensors[channel].voltage_straight = 1300.0f;
+            sensors[channel].voltage_bent = 500.0f;
         }
 
         ESP_LOGI(TAG, "Configured %s sensor on channel %d (%s)",
@@ -279,8 +279,8 @@ float flex_sensor_get_angle(adc_channel_t channel)
 
     // Fallback to raw ADC values
     return calculate_bend_angle_from_raw(raw_value,
-                                         sensors[channel].straight_adc_value,
-                                         sensors[channel].bent_adc_value);
+                                         sensors[channel].raw_straight,
+                                         sensors[channel].raw_bent);
 }
 
 bool adc_sensor_is_touch_sensor(adc_channel_t channel)
@@ -301,28 +301,144 @@ const char *adc_sensor_get_name(adc_channel_t channel)
     return sensors[channel].name;
 }
 
-void adc_sensor_calibrate_channel(adc_channel_t channel)
+void calibrate_all_flex_sensors(void)
 {
-    if (!component_initialized || !sensors[channel].configured)
+    if (!component_initialized)
     {
-        ESP_LOGE(TAG, "Channel %d not configured", channel);
+        ESP_LOGE(TAG, "ADC component not initialized");
         return;
     }
 
-    if (sensors[channel].is_touch_sensor)
+    ESP_LOGI(TAG, "Starting flex sensor calibration");
+
+    // Find all flex sensors
+    adc_channel_t flex_channels[5];
+    const char *flex_names[5];
+    int flex_count = 0;
+
+    // Collect all configured flex sensors
+    for (int i = 0; i < SOC_ADC_CHANNEL_NUM(ADC_UNIT_1); i++)
     {
-        ESP_LOGE(TAG, "Touch sensors don't need angle calibration");
+        if (sensors[i].configured && !sensors[i].is_touch_sensor)
+        {
+            if (flex_count < 5)
+            {
+                flex_channels[flex_count] = i;
+                flex_names[flex_count] = sensors[i].name;
+                flex_count++;
+            }
+        }
+    }
+
+    if (flex_count == 0)
+    {
+        ESP_LOGE(TAG, "No flex sensors found for calibration");
         return;
     }
 
-    ESP_LOGI(TAG, "Starting calibration for %s (channel %d)", sensors[channel].name, channel);
+    ESP_LOGI(TAG, "Found %d flex sensors to calibrate:", flex_count);
+    for (int i = 0; i < flex_count; i++)
+    {
+        ESP_LOGI(TAG, "  - %s (Channel %d)", flex_names[i], flex_channels[i]);
+    }
 
-    // Your calibration procedure here
-    // This is where you'd implement the interactive calibration
-    // For now, we'll just mark it as calibrated
-    sensors[channel].calibrated = true;
+    ESP_LOGI(TAG, "Keep all %d flex sensors straight", flex_count);
+    ESP_LOGI(TAG, "Waiting 3 seconds");
+    vTaskDelay(pdMS_TO_TICKS(3000));
 
-    ESP_LOGI(TAG, "Calibration complete for %s", sensors[channel].name);
+    // Read straight position for all sensors
+    ESP_LOGI(TAG, "Recording straight position values");
+    int straight_raw[5] = {0};
+    int straight_voltage[5] = {0};
+
+    for (int i = 0; i < flex_count; i++)
+    {
+        adc_channel_t channel = flex_channels[i];
+
+        // Take multiple samples and average for stability
+        int sum_raw = 0;
+        int sum_voltage = 0;
+        int samples = 10;
+
+        for (int s = 0; s < samples; s++)
+        {
+            int raw = adc_sensor_read_raw(channel);
+            int voltage = adc_sensor_read_voltage(channel);
+
+            if (raw != -1)
+                sum_raw += raw;
+            if (voltage != -1)
+                sum_voltage += voltage;
+            vTaskDelay(pdMS_TO_TICKS(10));
+        }
+
+        straight_raw[i] = sum_raw / samples;
+        straight_voltage[i] = sum_voltage / samples;
+
+        ESP_LOGI(TAG, "  %s: Raw=%d, Voltage=%dmV",
+                 flex_names[i], straight_raw[i], straight_voltage[i]);
+    }
+
+    ESP_LOGI(TAG, "Bend all %d flex sensors fully", flex_count);
+    ESP_LOGI(TAG, "Waiting 3 seconds");
+    vTaskDelay(pdMS_TO_TICKS(3000));
+
+    // Read bent position for all sensors
+    ESP_LOGI(TAG, "Recording bent position values");
+    int bent_raw[5] = {0};
+    int bent_voltage[5] = {0};
+
+    for (int i = 0; i < flex_count; i++)
+    {
+        adc_channel_t channel = flex_channels[i];
+
+        // Take multiple samples and average for stability
+        int sum_raw = 0;
+        int sum_voltage = 0;
+        int samples = 10;
+
+        for (int s = 0; s < samples; s++)
+        {
+            int raw = adc_sensor_read_raw(channel);
+            int voltage = adc_sensor_read_voltage(channel);
+
+            if (raw != -1)
+                sum_raw += raw;
+            if (voltage != -1)
+                sum_voltage += voltage;
+            vTaskDelay(pdMS_TO_TICKS(10));
+        }
+
+        bent_raw[i] = sum_raw / samples;
+        bent_voltage[i] = sum_voltage / samples;
+
+        ESP_LOGI(TAG, "  %s: Raw=%d, Voltage=%dmV",
+                 flex_names[i], bent_raw[i], bent_voltage[i]);
+    }
+
+    ESP_LOGI(TAG, "Applying calibration values to all sensors");
+    for (int i = 0; i < flex_count; i++)
+    {
+        adc_channel_t channel = flex_channels[i];
+
+        flex_sensor_set_calibration(channel,
+                                    straight_raw[i], straight_voltage[i],
+                                    bent_raw[i], bent_voltage[i]);
+    }
+
+    ESP_LOGI(TAG, "Return all sensors to straight for verification");
+    ESP_LOGI(TAG, "Waiting 3 seconds");
+    vTaskDelay(pdMS_TO_TICKS(3000));
+
+    ESP_LOGI(TAG, "Verification readings (should be close to 0°):");
+    for (int i = 0; i < flex_count; i++)
+    {
+        adc_channel_t channel = flex_channels[i];
+        float angle = flex_sensor_get_angle(channel);
+        ESP_LOGI(TAG, "  %s: Angle=%.1f°", flex_names[i], angle);
+    }
+
+    ESP_LOGI(TAG, "Calibration complete for all %d flex sensors!", flex_count);
 }
 
 void flex_sensor_set_calibration(adc_channel_t channel,
@@ -334,8 +450,8 @@ void flex_sensor_set_calibration(adc_channel_t channel,
         return;
     }
 
-    sensors[channel].straight_adc_value = (float)straight_raw;
-    sensors[channel].bent_adc_value = (float)bent_raw;
+    sensors[channel].raw_straight = (float)straight_raw;
+    sensors[channel].raw_bent = (float)bent_raw;
     sensors[channel].voltage_straight = (float)straight_voltage;
     sensors[channel].voltage_bent = (float)bent_voltage;
     sensors[channel].calibrated = true;
@@ -436,9 +552,9 @@ static float calculate_bend_angle_from_voltage(int voltage_mv, float voltage_str
 }
 
 // Function to calculate bend angle from raw ADC
-static float calculate_bend_angle_from_raw(int raw_adc, float adc_straight, float adc_bent)
+static float calculate_bend_angle_from_raw(int raw_adc, float raw_straight, float raw_bent)
 {
-    float normalized = (float)(raw_adc - adc_straight) /
-                       (adc_bent - adc_straight);
+    float normalized = (float)(raw_adc - raw_straight) /
+                       (raw_bent - raw_straight);
     return calculate_bend_angle_normalized(normalized);
 }

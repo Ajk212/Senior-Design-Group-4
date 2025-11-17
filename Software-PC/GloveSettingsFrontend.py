@@ -1,13 +1,21 @@
 
 from PyQt5.QtWidgets import QMainWindow
 from ConfigUI import Ui_MainWindow as configUI #May need to change name based on window name
-
+from PyQt5.QtCore import pyqtSignal, Qt
+from PyQt5.QtGui import QIcon
 
 class GloveSettingsFrontend(QMainWindow):
+    connect_requested = pyqtSignal()
+    window_hidden = pyqtSignal()
+
     def __init__(self):
         super().__init__()
         self.ui = configUI()
         self.ui.setupUi(self)
+        self.apply_stylesheet("style.qss")
+        self.setWindowIcon(QIcon("HandSense_Hand.png"))
+        self.resize(600, 600)
+
 
         #list of all navigation combo boxes in UI
         self.NAV_COMBOS = [self.ui.tap_thumb_combo, 
@@ -45,7 +53,40 @@ class GloveSettingsFrontend(QMainWindow):
         # Load combo boxes with available NAV_OPTIONS
         # Connect buttons to their respective functions
 
+        self.ui.connect_push_button.clicked.connect(self.attemptConnection)
 
+    def keyPressEvent(self, event):
+        # Reload stylesheet when the user presses the 'r' key
+        if event.key() == Qt.Key_R:
+            self.apply_stylesheet("style.qss")
+            print("Stylesheet reloaded")
+
+    def apply_stylesheet(self, filename):
+        try:
+            with open(filename, "r") as file:
+                style = file.read()
+                self.setStyleSheet(style)
+        except Exception as e:
+            print(f"Failed to load stylesheet: {e}")
+
+    def closeEvent(self, event):
+        event.ignore()
+        self.hide()
+        self.window_hidden.emit()
+
+    def attemptConnection(self):
+        #print("Connect button clicked")
+        self.connect_requested.emit()
+
+    def updateConnectionStatus(self, status):
+        if status:
+            self.ui.connection_label.setText("Connection Established")
+            self.ui.connect_push_button.setDisabled(True)
+            
+        else:
+            self.ui.connection_label.setText("No Connection Found")
+            self.ui.connect_push_button.setDisabled(False)
+        
 
     def comboBoxInit(self):
         for combo in self.NAV_COMBOS:

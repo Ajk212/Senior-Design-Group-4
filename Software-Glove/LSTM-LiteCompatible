@@ -1,0 +1,37 @@
+import numpy as np
+import tensorflow as tf
+from tensorflow.keras import layers, models
+import os
+
+WINDOW_SIZE = 20
+CHANNELS = 3
+NUM_CLASSES = 5
+
+X_path = os.path.join(os.path.dirname(__file__), "X.npy")
+y_path = os.path.join(os.path.dirname(__file__), "y.npy")
+
+
+X = np.load(X_path)
+y = np.load(y_path)
+
+inputs = tf.keras.Input(shape=(WINDOW_SIZE, CHANNELS), dtype=tf.float32)
+x = layers.LSTM(64, return_sequences=False, unroll=True)(inputs)
+outputs = layers.Dense(NUM_CLASSES, activation='softmax')(x)
+
+model = tf.keras.Model(inputs, outputs)
+
+model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+model.fit(X, y, epochs=20, batch_size=32, validation_split=0.2)
+
+print("\nSaving model as 'Lite_LSTM_Test.keras'")
+model.save('Lite_LSTM_Test.keras')
+
+
+converter = tf.lite.TFLiteConverter.from_keras_model(model)
+converter.optimizations = [tf.lite.Optimize.DEFAULT]
+tflite_model = converter.convert()
+
+with open('Lite_LSTM_Test.tflite', 'wb') as f:
+    f.write(tflite_model)
+
+print("Saved 'Lite_LSTM_Test.tflite'")
