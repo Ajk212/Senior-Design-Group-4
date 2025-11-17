@@ -49,7 +49,7 @@ class GloveSettingsBackend(QObject):
                 self.frontend.updateConnectionStatus(self.isConnected)
                 await asyncio.sleep(3.0)
 
-                await self.client.start_notify(CHAR_UUID, self.recieve_detected_gesture)
+                await self.client.start_notify(TX_UUID, self.recieve_detected_gesture)
             
             
     def recieve_detected_gesture(self, sender, gesture):
