@@ -51,10 +51,15 @@ float gyro_window[WINDOW_SIZE][3];
 int curr_index = 0;
 bool window_filled = false;
 
-// const char *model_modes[] = {
-//     "locked",
-//     "navigational",
-//     "text"};
+const char *model_modes[] = {
+    "Locked",
+    "Navigational",
+    "Text"};
+
+int current_mode = 0; // 0=locked, 1=navigational, 2=text
+
+uint32_t touch_pressed_start = 0;
+bool touch_was_pressed = false;
 
 // I2C Configuration
 #define I2C_MASTER_SCL_IO 21
@@ -131,6 +136,32 @@ extern "C" void app_main(void)
     esp_log_level_set("*", ESP_LOG_INFO);
     ESP_LOGI(TAG, "Starting HandSense");
 
+    // Set up initial OLED display
+    oled_init_simple();
+    oled_draw_bitmap(0, 0, icon_bluetooth_disconn_14x16, 24, 16, false);
+    oled_print_text(0, 29, "HandSense");
+    // read battery then display correct nvs stored battery state
+    oled_draw_bitmap(0, 100, icon_battery_full_24x16, 24, 16, false);
+
+    char line[22];
+    char temp_buf[25];
+
+    snprintf(temp_buf, sizeof(temp_buf), "Mode: Locked");
+    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
+    oled_print_text(3, 0, line);
+
+    snprintf(temp_buf, sizeof(temp_buf), "Status:");
+    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
+    oled_print_text(4, 0, line);
+
+    snprintf(temp_buf, sizeof(temp_buf), "Advertising BT");
+    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
+    oled_print_text(5, 0, line);
+
+    snprintf(temp_buf, sizeof(temp_buf), "Gesture:");
+    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
+    oled_print_text(6, 0, line);
+
     const tflite::Model *model = tflite::GetModel(Lite_LSTM_Test4_tflite);
 
     if (model->version() != TFLITE_SCHEMA_VERSION)
@@ -182,6 +213,7 @@ extern "C" void app_main(void)
     // Initialize I2C
     ESP_ERROR_CHECK(i2c_master_init());
     ESP_LOGI(TAG, "I2C initialized successfully");
+
     // Test I2C communication by scanning for devices
     i2c_scanner();
 
@@ -197,8 +229,6 @@ extern "C" void app_main(void)
 
     // Calibrate both sensors
     mpu6050_calibrate_both_sensor(&calib_imu1, &calib_imu2);
-
-    oled_init_simple();
 
     // Configure and initialize DRV2605
     drv2605_config_t drv_config = DRV2605_DEFAULT_CONFIG();
@@ -217,6 +247,14 @@ extern "C" void app_main(void)
     calibrate_all_flex_sensors();
 
     ESP_LOGI(TAG, "All devices initialized, starting readings...");
+
+    snprintf(temp_buf, sizeof(temp_buf), "Status:");
+    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
+    oled_print_text(4, 0, line);
+
+    snprintf(temp_buf, sizeof(temp_buf), "Ready for gestures");
+    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
+    oled_print_text(5, 0, line);
 
     // Data variables
     imu_data_t imu_data_1, imu_data_2;
@@ -239,19 +277,13 @@ extern "C" void app_main(void)
             apply_calibration(&imu_data_1, &calib_imu1);
             apply_calibration(&imu_data_2, &calib_imu2);
 
-            // Log to serial
-            // ESP_LOGI(TAG, "IMU1 Accel: X=%.2f, Y=%.2f, Z=%.2f m/s^2", accel1_x, accel1_y, accel1_z);
-            // ESP_LOGI(TAG, "IMU1 Gyro:  X=%.2f, Y=%.2f, Z=%.2f deg/s", gyro1_x, gyro1_y, gyro1_z);
-            // ESP_LOGI(TAG, "Temps: IMU1=%.1f°F", temp1_f);
-            // ESP_LOGI(TAG, "IMU2 Accel: X=%.2f, Y=%.2f, Z=%.2f m/s^2", accel2_x, accel2_y, accel2_z);
-            // ESP_LOGI(TAG, "IMU2 Gyro:  X=%.2f, Y=%.2f, Z=%.2f deg/s", gyro2_x, gyro2_y, gyro2_z);
-            // ESP_LOGI(TAG, "Temps: IMU2=%.1f°F", temp2_f);
-
-            oled_update_display(imu_data_1.ax, imu_data_1.ay, imu_data_1.az,
-                                imu_data_2.ax, imu_data_2.ay, imu_data_2.az,
-                                imu_data_1.gx, imu_data_1.gy, imu_data_1.gz,
-                                imu_data_2.gx, imu_data_2.gy, imu_data_2.gz,
-                                imu_data_1.temperature, imu_data_2.temperature);
+            //     // Log to serial
+            //     // ESP_LOGI(TAG, "IMU1 Accel: X=%.2f, Y=%.2f, Z=%.2f m/s^2", accel1_x, accel1_y, accel1_z);
+            //     // ESP_LOGI(TAG, "IMU1 Gyro:  X=%.2f, Y=%.2f, Z=%.2f deg/s", gyro1_x, gyro1_y, gyro1_z);
+            //     // ESP_LOGI(TAG, "Temps: IMU1=%.1f°F", temp1_f);
+            //     // ESP_LOGI(TAG, "IMU2 Accel: X=%.2f, Y=%.2f, Z=%.2f m/s^2", accel2_x, accel2_y, accel2_z);
+            //     // ESP_LOGI(TAG, "IMU2 Gyro:  X=%.2f, Y=%.2f, Z=%.2f deg/s", gyro2_x, gyro2_y, gyro2_z);
+            //     // ESP_LOGI(TAG, "Temps: IMU2=%.1f°F", temp2_f);
         }
         else
         {
@@ -262,28 +294,63 @@ extern "C" void app_main(void)
         float flex_angles[5] = {0};
 
         // Read all sensors
-        // for (int i = 0; i < sizeof(sensor_configs) / sizeof(sensor_configs[0]); i++)
-        // {
-        //     adc_channel_t channel = sensor_configs[i].channel;
-        //     const char *name = sensor_configs[i].name;
-        //     bool is_touch = sensor_configs[i].is_touch_sensor;
+        for (int i = 0; i < sizeof(sensor_configs) / sizeof(sensor_configs[0]); i++)
+        {
+            adc_channel_t channel = sensor_configs[i].channel;
+            const char *name = sensor_configs[i].name;
+            bool is_touch = sensor_configs[i].is_touch_sensor;
 
-        //     int raw = adc_sensor_read_raw(channel);
-        //     int voltage = adc_sensor_read_voltage(channel);
+            int raw = adc_sensor_read_raw(channel);
+            int voltage = adc_sensor_read_voltage(channel);
 
-        // if (adc_sensor_read_voltage(TOUCH_ADC_CHANNEL) > 500)
-        // {
-        //     // toggle model modes
-        // }
-        //         ESP_LOGI(TAG, "%s: Raw: %d, Voltage: %d mV", name, raw, voltage);
-        //     }
-        //     else
-        //     {
-        //         flex_angle[i] = flex_sensor_get_angle(channel);
-        //         ESP_LOGI(TAG, "%s: Raw: %d, Voltage: %d mV, Angle: %.1f°",
-        //                  name, raw, voltage, angle);
-        //     }
-        // }
+            if (is_touch)
+            {
+                bool is_touch_pressed = (voltage > 1000); // TRUE if touched
+
+                uint32_t now = esp_log_timestamp(); // ms since boot
+
+                if (is_touch_pressed)
+                {
+                    if (!touch_was_pressed)
+                    {
+                        touch_pressed_start = now;
+                        touch_was_pressed = true;
+                    }
+                    else
+                    {
+                        uint32_t held_ms = now - touch_pressed_start;
+                        if (held_ms >= 3000)
+                        {
+                            // Toggle mode
+                            current_mode = (current_mode + 1) % 3; // rotate through modes
+                            ESP_LOGI(TAG, "Model Mode Toggled to %s", model_modes[current_mode]);
+
+                            // Update OLED
+
+                            snprintf(temp_buf, sizeof(temp_buf), "Mode: %s", model_modes[current_mode]);
+                            snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
+                            oled_print_text(3, 0, line);
+
+                            // Prevent repeated toggles while still pressed
+                            touch_pressed_start = now + 100000;
+                        }
+                    }
+                }
+                else
+                {
+                    // Released
+                    touch_was_pressed = false;
+                }
+
+                ESP_LOGI(TAG, "%s: Raw: %d, Voltage: %d mV", name, raw, voltage);
+            }
+            else
+            {
+                flex_angle[i] = flex_sensor_get_angle(channel);
+                ESP_LOGI(TAG, "%s: Raw: %d, Voltage: %d mV, Angle: %.1f°",
+                         name, raw, voltage, flex_angle[i]);
+            }
+        }
 
         // Read senor data frame - 20 values of 3-axis gyro
 
@@ -333,18 +400,26 @@ extern "C" void app_main(void)
             if (ble_is_connected() && ble_notifications_enabled())
             {
                 // Send a message and wait for acknowledgment
-                if (send_string_and_wait_ack(predicted_gesture))
+                if (send_string_and_wait_ack("predicted_gesture"))
                 {
-                    // ESP_LOGI(TAG, "Playing long buzz");
-                    // drv2605_play_effect(drv, DRV2605_EFFECT_LONG_BUZZ);
-                    // OLED update gesture field
+                    snprintf(temp_buf, sizeof(temp_buf), "%s", predicted_gesture);
+                    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
+                    oled_print_text(7, 0, line);
+
+                    ESP_LOGI(TAG, "Playing long buzz");
+                    drv2605_play_effect(drv, DRV2605_EFFECT_LONG_BUZZ);
+
                     ESP_LOGI("MAIN", "Message delivered successfully");
                 }
                 else
                 {
+                    snprintf(temp_buf, sizeof(temp_buf), "");
+                    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
+                    oled_print_text(7, 0, line);
+
                     ESP_LOGE("MAIN", "Message delivery failed");
-                    // ESP_LOGI(TAG, "Playing long buzz");
-                    // drv2605_play_effect(drv, DRV2605_EFFECT_DOUBLE_CLICK);
+                    ESP_LOGI(TAG, "Playing long buzz");
+                    drv2605_play_effect(drv, DRV2605_EFFECT_DOUBLE_CLICK);
                 }
             }
             else
@@ -357,6 +432,6 @@ extern "C" void app_main(void)
         }
     }
 
-    // drv2605_deinit(drv);
-    // adc_sensor_deinit();
+    drv2605_deinit(drv);
+    adc_sensor_deinit();
 }

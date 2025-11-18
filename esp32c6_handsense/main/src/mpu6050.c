@@ -4,6 +4,7 @@
 #include "freertos/task.h"
 #include "driver/i2c.h"
 #include "esp_log.h"
+#include "oled.h"
 
 static const char *TAG = "MPU6050";
 
@@ -128,6 +129,7 @@ esp_err_t mpu6050_init_sensor_advanced(uint8_t sensor_addr, const char *sensor_n
         ESP_LOGE(TAG, "Failed to read from %s! Error: 0x%x", sensor_name, ret);
         return ret;
     }
+    ESP_LOGI(TAG, "%s WHO_AM_I = 0x%02X", sensor_name, who_am_i);
 
     if (who_am_i != 0x68)
     {
@@ -278,6 +280,12 @@ esp_err_t mpu6050_calibrate_both_sensor(calibration_data_t *calib_1, calibration
 {
     ESP_LOGI(TAG, "Starting calibration - keep sensor stationary");
 
+    char line[22];
+    char temp_buf[25];
+    snprintf(temp_buf, sizeof(temp_buf), "Keep glove at rest");
+    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
+    oled_print_text(5, 0, line);
+
     float a1x_sum = 0, a1y_sum = 0, a1z_sum = 0;
     float g1x_sum = 0, g1y_sum = 0, g1z_sum = 0;
     float a2x_sum = 0, a2y_sum = 0, a2z_sum = 0;
@@ -328,6 +336,10 @@ esp_err_t mpu6050_calibrate_both_sensor(calibration_data_t *calib_1, calibration
 
     calib_1->sample_count = num_samples;
     calib_2->sample_count = num_samples;
+
+    snprintf(temp_buf, sizeof(temp_buf), "Calibration complete");
+    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
+    oled_print_text(5, 0, line);
 
     ESP_LOGI(TAG, "Calibration complete");
     ESP_LOGI(TAG, "Accel bias for Sensor 1: %.3f, %.3f, %.3f",

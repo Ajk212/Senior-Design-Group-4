@@ -1,5 +1,6 @@
 #include "ble.h"
 #include "string.h"
+#include "oled.h"
 
 char device_name[DEVICE_NAME_MAX_LEN] = "ESP32C6-HANDSENSE";
 
@@ -318,11 +319,13 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
         current_conn_id = param->connect.conn_id;
         current_gatts_if = gatts_if;
         notifications_enabled = false;
+        oled_draw_bitmap(0, 0, icon_bluetooth_14x16, 14, 16, false);
         break;
 
     case ESP_GATTS_DISCONNECT_EVT:
         ESP_LOGI(GATTS_TAG, "Client disconnected");
         current_conn_id = 0xFFFF;
+        oled_draw_bitmap(0, 0, icon_bluetooth_disconn_14x16, 14, 16, false);
         notifications_enabled = false;
         // Restart advertising
         esp_ble_adv_params_t adv_params_restart = {

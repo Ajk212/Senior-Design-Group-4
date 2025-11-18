@@ -9,6 +9,7 @@
 #include "esp_adc/adc_cali.h"
 #include "esp_adc/adc_cali_scheme.h"
 #include "adc.h"
+#include "oled.h"
 
 static const char *TAG = "ADC";
 
@@ -309,6 +310,17 @@ void calibrate_all_flex_sensors(void)
         return;
     }
 
+    char line[22];
+    char temp_buf[25];
+
+    snprintf(temp_buf, sizeof(temp_buf), "Status: Calibrating");
+    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
+    oled_print_text(4, 0, line);
+
+    snprintf(temp_buf, sizeof(temp_buf), "flex sensors");
+    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
+    oled_print_text(5, 0, line);
+
     ESP_LOGI(TAG, "Starting flex sensor calibration");
 
     // Find all flex sensors
@@ -341,6 +353,14 @@ void calibrate_all_flex_sensors(void)
     {
         ESP_LOGI(TAG, "  - %s (Channel %d)", flex_names[i], flex_channels[i]);
     }
+
+    snprintf(temp_buf, sizeof(temp_buf), "Status: Keep your");
+    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
+    oled_print_text(4, 0, line);
+
+    snprintf(temp_buf, sizeof(temp_buf), "fingers straight");
+    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
+    oled_print_text(5, 0, line);
 
     ESP_LOGI(TAG, "Keep all %d flex sensors straight", flex_count);
     ESP_LOGI(TAG, "Waiting 3 seconds");
@@ -378,6 +398,14 @@ void calibrate_all_flex_sensors(void)
         ESP_LOGI(TAG, "  %s: Raw=%d, Voltage=%dmV",
                  flex_names[i], straight_raw[i], straight_voltage[i]);
     }
+
+    snprintf(temp_buf, sizeof(temp_buf), "Status: Bent your");
+    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
+    oled_print_text(4, 0, line);
+
+    snprintf(temp_buf, sizeof(temp_buf), "fingers fully");
+    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
+    oled_print_text(5, 0, line);
 
     ESP_LOGI(TAG, "Bend all %d flex sensors fully", flex_count);
     ESP_LOGI(TAG, "Waiting 3 seconds");
@@ -426,6 +454,15 @@ void calibrate_all_flex_sensors(void)
                                     bent_raw[i], bent_voltage[i]);
     }
 
+    // TODO: Remove after integrating
+    snprintf(temp_buf, sizeof(temp_buf), "Status: Keep your");
+    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
+    oled_print_text(4, 0, line);
+
+    snprintf(temp_buf, sizeof(temp_buf), "fingers straight");
+    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
+    oled_print_text(5, 0, line);
+
     ESP_LOGI(TAG, "Return all sensors to straight for verification");
     ESP_LOGI(TAG, "Waiting 3 seconds");
     vTaskDelay(pdMS_TO_TICKS(3000));
@@ -437,6 +474,14 @@ void calibrate_all_flex_sensors(void)
         float angle = flex_sensor_get_angle(channel);
         ESP_LOGI(TAG, "  %s: Angle=%.1f°", flex_names[i], angle);
     }
+
+    snprintf(temp_buf, sizeof(temp_buf), "Status: Flex sensors");
+    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
+    oled_print_text(4, 0, line);
+
+    snprintf(temp_buf, sizeof(temp_buf), "calibrated");
+    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
+    oled_print_text(5, 0, line);
 
     ESP_LOGI(TAG, "Calibration complete for all %d flex sensors!", flex_count);
 }
