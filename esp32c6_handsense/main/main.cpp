@@ -8,6 +8,9 @@ extern "C"
 #include "freertos/event_groups.h"
 #include "driver/gpio.h"
 #include "esp_log.h"
+#include "nvs_flash.h"
+#include "nvs.h"
+#include "esp_timer.h"
 #include "esp_system.h"
 
 #include "imu_frame.h"
@@ -71,12 +74,12 @@ bool touch_was_pressed = false;
 #define I2C_MASTER_RX_BUF_DISABLE 0
 
 // ADC Configuration
-#define RING_ADC_CHANNEL ADC_CHANNEL_5
-#define POINTER_ADC_CHANNEL ADC_CHANNEL_3
 #define THUMB_ADC_CHANNEL ADC_CHANNEL_2
-#define PINKY_ADC_CHANNEL ADC_CHANNEL_1
+#define POINTER_ADC_CHANNEL ADC_CHANNEL_3
 #define MIDDLE_ADC_CHANNEL ADC_CHANNEL_4
-#define TOUCH_ADC_CHANNEL ADC_CHANNEL_0
+#define RING_ADC_CHANNEL ADC_CHANNEL_5
+#define PINKY_ADC_CHANNEL ADC_CHANNEL_6
+#define TOUCH_ADC_CHANNEL ADC_CHANNEL_1
 
 static const adc_sensor_config_t sensor_configs[] = {
     {THUMB_ADC_CHANNEL, "Thumb", false},
@@ -86,6 +89,19 @@ static const adc_sensor_config_t sensor_configs[] = {
     {PINKY_ADC_CHANNEL, "Pinky", false},
     {TOUCH_ADC_CHANNEL, "Touch", true},
 };
+
+// Battery variables
+static constexpr int BATTERY_CAPACITY_MAH = 1000;
+static constexpr int AVERAGE_CURRENT_MA = 100;    // measure or estimate
+static constexpr int PERSIST_INTERVAL_MS = 30000; // store every 30s
+
+struct BatteryRuntime
+{
+    uint64_t boot_offset_ms = 0;
+    uint64_t charge_time_ms = 0;
+};
+
+static BatteryRuntime batt;
 
 // Initialize I2C master
 esp_err_t i2c_master_init(void)
@@ -129,6 +145,106 @@ void i2c_scanner(void)
         }
     }
     ESP_LOGI(TAG, "I2C scan complete");
+}
+
+// Battery and nvs functions
+static void nvs_load_runtime()
+{
+    nvs_handle_t h;
+    esp_err_t err = nvs_open("battery", NVS_READONLY, &h);
+    if (err != ESP_OK)
+    {
+        ESP_LOGW(TAG, "First boot or NVS missing.");
+        batt.boot_offset_ms = 0;
+        batt.charge_time_ms = esp_timer_get_time() / 1000ULL;
+        return;
+    }
+    nvs_get_u64(h, "boot_off", &batt.boot_offset_ms);
+    nvs_get_u64(h, "charge_ms", &batt.charge_time_ms);
+    nvs_close(h);
+
+    ESP_LOGI(TAG, "Loaded: boot_off=%llu ms, charge=%llu ms",
+             batt.boot_offset_ms, batt.charge_time_ms);
+}
+
+static void nvs_save_runtime(uint64_t now_ms)
+{
+    nvs_handle_t h;
+    ESP_ERROR_CHECK(nvs_open("battery", NVS_READWRITE, &h));
+
+    ESP_ERROR_CHECK(nvs_set_u64(h, "boot_off", batt.boot_offset_ms));
+    ESP_ERROR_CHECK(nvs_set_u64(h, "charge_ms", batt.charge_time_ms));
+
+    ESP_ERROR_CHECK(nvs_commit(h));
+    nvs_close(h);
+}
+
+static float battery_get_soc()
+{
+    uint64_t now_ms = esp_timer_get_time() / 1000ULL;
+
+    uint64_t uptime_ms = batt.boot_offset_ms + (now_ms - batt.charge_time_ms);
+    float hours = uptime_ms / 3600000.0f;
+
+    float used = hours * AVERAGE_CURRENT_MA;
+    float soc = 100.0f * (1.0f - used / BATTERY_CAPACITY_MAH);
+
+    if (soc < 0)
+        soc = 0;
+    if (soc > 100)
+        soc = 100;
+
+    return soc;
+}
+
+const uint8_t *battery_icon_from_soc(int soc)
+{
+    if (soc >= 95)
+        return icon_battery_full_24x16;
+    else if (soc >= 90)
+        return icon_battery_90_24x16;
+    else if (soc >= 80)
+        return icon_battery_80_24x16;
+    else if (soc >= 70)
+        return icon_battery_70_24x16;
+    else if (soc >= 60)
+        return icon_battery_60_24x16;
+    else if (soc >= 50)
+        return icon_battery_50_24x16;
+    else if (soc >= 40)
+        return icon_battery_40_24x16;
+    else if (soc >= 30)
+        return icon_battery_30_24x16;
+    else if (soc >= 20)
+        return icon_battery_20_24x16;
+    else if (soc >= 10)
+        return icon_battery_10_24x16;
+    else
+        return icon_battery_5_24x16;
+}
+
+static void battery_update_task(void *)
+{
+    uint64_t last_save = 0;
+
+    while (true)
+    {
+        float soc = battery_get_soc();
+        const uint8_t *icon = battery_icon_from_soc(soc);
+        oled_draw_bitmap(0, 100, icon, 24, 16, false);
+        ESP_LOGI(TAG, "Estimated SoC: %.1f%%", soc);
+
+        uint64_t now_ms = esp_timer_get_time() / 1000ULL;
+
+        if (now_ms - last_save > PERSIST_INTERVAL_MS)
+        {
+            batt.boot_offset_ms += PERSIST_INTERVAL_MS;
+            nvs_save_runtime(now_ms);
+            last_save = now_ms;
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(5000)); // update every 5 sec
+    }
 }
 
 extern "C" void app_main(void)
@@ -184,6 +300,9 @@ extern "C" void app_main(void)
     // Initialize Bluetooth
     ble_init();
 
+    // Battery task and NVS
+    nvs_load_runtime();
+
     // Initialize I2C
     ESP_ERROR_CHECK(i2c_master_init());
     ESP_LOGI(TAG, "I2C initialized successfully");
@@ -194,28 +313,19 @@ extern "C" void app_main(void)
     // Set up initial OLED display
     oled_init_simple();
     oled_draw_bitmap(0, 0, icon_bluetooth_disconn_14x16, 14, 16, false);
-    oled_print_text(0, 29, "HandSense");
-    // read battery then display correct nvs stored battery state
-    oled_draw_bitmap(0, 100, icon_battery_full_24x16, 24, 16, false);
+    oled_print_text_simple(0, 20, "HandSense");
+    float soc_percent = battery_get_soc();
+    const uint8_t *icon = battery_icon_from_soc(soc_percent);
+    oled_draw_bitmap(0, 100, icon, 24, 16, false);
 
-    char line[22];
-    char temp_buf[25];
+    char buf[21];
+    snprintf(buf, sizeof(buf), "Mode: %s", model_modes[current_mode]);
+    oled_print_text(3, 0, buf);
+    oled_print_text(4, 0, "Status:");
+    oled_print_text(5, 0, "Advertising BT");
+    oled_print_text(6, 0, "Gesture:");
 
-    snprintf(temp_buf, sizeof(temp_buf), "Mode: Locked");
-    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
-    oled_print_text(3, 0, line);
-
-    snprintf(temp_buf, sizeof(temp_buf), "Status:");
-    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
-    oled_print_text(4, 0, line);
-
-    snprintf(temp_buf, sizeof(temp_buf), "Advertising BT");
-    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
-    oled_print_text(5, 0, line);
-
-    snprintf(temp_buf, sizeof(temp_buf), "Gesture:");
-    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
-    oled_print_text(6, 0, line);
+    xTaskCreate(battery_update_task, "batt_task", 4096, nullptr, 5, nullptr);
 
     // Initialize MPU6050 sensor
     if (mpu6050_init_both_advanced(DLPF_CFG_4, ACCEL_FS_SEL_4G, GYRO_FS_SEL_500DPS) != ESP_OK)
@@ -248,16 +358,12 @@ extern "C" void app_main(void)
 
     ESP_LOGI(TAG, "All devices initialized, starting readings...");
 
-    snprintf(temp_buf, sizeof(temp_buf), "Status:");
-    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
-    oled_print_text(4, 0, line);
-
-    snprintf(temp_buf, sizeof(temp_buf), "Ready for gestures");
-    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
-    oled_print_text(5, 0, line);
+    oled_print_text(4, 0, "Status:");
+    oled_print_text(5, 0, "Ready for gestures");
 
     // Data variables
     imu_data_t imu_data_1, imu_data_2;
+    float flex_angles[5] = {0};
 
     while (1)
     {
@@ -288,10 +394,7 @@ extern "C" void app_main(void)
             ESP_LOGE(TAG, "Failed to read IMU");
         }
 
-        // Data variable
-        float flex_angles[5] = {0};
-
-        // Read all sensors
+        // Read all adc sensors
         for (int i = 0; i < sizeof(sensor_configs) / sizeof(sensor_configs[0]); i++)
         {
             adc_channel_t channel = sensor_configs[i].channel;
@@ -324,10 +427,8 @@ extern "C" void app_main(void)
                             ESP_LOGI(TAG, "Model Mode Toggled to %s", model_modes[current_mode]);
 
                             // Update OLED
-
-                            snprintf(temp_buf, sizeof(temp_buf), "Mode: %s", model_modes[current_mode]);
-                            snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
-                            oled_print_text(3, 0, line);
+                            snprintf(buf, sizeof(buf), "Mode: %s", model_modes[current_mode]);
+                            oled_print_text(3, 0, buf);
 
                             // Prevent repeated toggles while still pressed
                             touch_pressed_start = now + 100000;
@@ -340,13 +441,13 @@ extern "C" void app_main(void)
                     touch_was_pressed = false;
                 }
 
-                // ESP_LOGI(TAG, "%s: Raw: %d, Voltage: %d mV", name, raw, voltage);
+                ESP_LOGI(TAG, "%s: Raw: %d, Voltage: %d mV", name, raw, voltage);
             }
             else
             {
                 flex_angles[i] = flex_sensor_get_angle(channel);
-                // ESP_LOGI(TAG, "%s: Raw: %d, Voltage: %d mV, Angle: %.1f°",
-                //          name, raw, voltage, flex_angles[i]);
+                ESP_LOGI(TAG, "%s: Raw: %d, Voltage: %d mV, Angle: %.1f°",
+                         name, raw, voltage, flex_angles[i]);
             }
         }
 
@@ -400,9 +501,8 @@ extern "C" void app_main(void)
                 // Send a message and wait for acknowledgment
                 if (send_string_and_wait_ack(predicted_gesture))
                 {
-                    snprintf(temp_buf, sizeof(temp_buf), "%s", predicted_gesture);
-                    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
-                    oled_print_text(7, 0, line);
+                    snprintf(buf, sizeof(buf), "%s", predicted_gesture);
+                    oled_print_text(7, 0, buf);
 
                     ESP_LOGI(TAG, "Playing long buzz");
                     drv2605_play_effect(drv, DRV2605_EFFECT_LONG_BUZZ);
@@ -411,12 +511,10 @@ extern "C" void app_main(void)
                 }
                 else
                 {
-                    snprintf(temp_buf, sizeof(temp_buf), "%s", "");
-                    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
-                    oled_print_text(7, 0, line);
+                    oled_print_text(7, 0, "");
 
                     ESP_LOGE("MAIN", "Message delivery failed");
-                    ESP_LOGI(TAG, "Playing long buzz");
+                    ESP_LOGI(TAG, "Playing double click");
                     drv2605_play_effect(drv, DRV2605_EFFECT_DOUBLE_CLICK);
                 }
             }

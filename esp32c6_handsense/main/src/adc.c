@@ -310,16 +310,12 @@ void calibrate_all_flex_sensors(void)
         return;
     }
 
-    char line[22];
-    char temp_buf[25];
+    char buf[21];
+    snprintf(buf, sizeof(buf), "Status: Calibrating");
+    oled_print_text(4, 0, buf);
 
-    snprintf(temp_buf, sizeof(temp_buf), "Status: Calibrating");
-    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
-    oled_print_text(4, 0, line);
-
-    snprintf(temp_buf, sizeof(temp_buf), "flex sensors");
-    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
-    oled_print_text(5, 0, line);
+    snprintf(buf, sizeof(buf), "flex sensors");
+    oled_print_text(5, 0, buf);
 
     ESP_LOGI(TAG, "Starting flex sensor calibration");
 
@@ -354,13 +350,11 @@ void calibrate_all_flex_sensors(void)
         ESP_LOGI(TAG, "  - %s (Channel %d)", flex_names[i], flex_channels[i]);
     }
 
-    snprintf(temp_buf, sizeof(temp_buf), "Status: Keep your");
-    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
-    oled_print_text(4, 0, line);
+    snprintf(buf, sizeof(buf), "Status: Keep your");
+    oled_print_text(4, 0, buf);
 
-    snprintf(temp_buf, sizeof(temp_buf), "fingers straight");
-    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
-    oled_print_text(5, 0, line);
+    snprintf(buf, sizeof(buf), "fingers straight");
+    oled_print_text(5, 0, buf);
 
     ESP_LOGI(TAG, "Keep all %d flex sensors straight", flex_count);
     ESP_LOGI(TAG, "Waiting 3 seconds");
@@ -399,13 +393,11 @@ void calibrate_all_flex_sensors(void)
                  flex_names[i], straight_raw[i], straight_voltage[i]);
     }
 
-    snprintf(temp_buf, sizeof(temp_buf), "Status: Bent your");
-    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
-    oled_print_text(4, 0, line);
+    snprintf(buf, sizeof(buf), "Status: Bent your");
+    oled_print_text(4, 0, buf);
 
-    snprintf(temp_buf, sizeof(temp_buf), "fingers fully");
-    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
-    oled_print_text(5, 0, line);
+    snprintf(buf, sizeof(buf), "fingers fully");
+    oled_print_text(5, 0, buf);
 
     ESP_LOGI(TAG, "Bend all %d flex sensors fully", flex_count);
     ESP_LOGI(TAG, "Waiting 3 seconds");
@@ -454,13 +446,11 @@ void calibrate_all_flex_sensors(void)
                                     bent_raw[i], bent_voltage[i]);
     }
 
-    snprintf(temp_buf, sizeof(temp_buf), "Status: Flex sensors");
-    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
-    oled_print_text(4, 0, line);
+    snprintf(buf, sizeof(buf), "Status: Flex sensors");
+    oled_print_text(4, 0, buf);
 
-    snprintf(temp_buf, sizeof(temp_buf), "calibrated");
-    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
-    oled_print_text(5, 0, line);
+    snprintf(buf, sizeof(buf), "calibrated");
+    oled_print_text(5, 0, buf);
 
     ESP_LOGI(TAG, "Calibration complete for all %d flex sensors!", flex_count);
 }
