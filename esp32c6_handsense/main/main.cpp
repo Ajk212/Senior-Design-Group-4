@@ -17,6 +17,7 @@ extern "C"
 #include "drv2605.h"
 #include "adc.h"
 #include "ble.h"
+#include "sensor_frame.h"
 }
 
 #include "tensorflow/lite/micro/micro_mutable_op_resolver.h"
@@ -29,6 +30,8 @@ static const char *TAG = "MAIN";
 // IMU variables
 static calibration_data_t calib_imu1 = {0};
 static calibration_data_t calib_imu2 = {0};
+
+static sensor_frame_t sensor_data = {0};
 
 // Model variables
 constexpr int kTensorArenaSize = 64 * 1024;
@@ -258,6 +261,8 @@ extern "C" void app_main(void)
 
     // Data variables
     imu_data_t imu_data_1, imu_data_2;
+    float flex_angles[5] = {0};
+    float touch_voltage = 0;
 
     while (1)
     {
@@ -290,9 +295,6 @@ extern "C" void app_main(void)
             ESP_LOGE(TAG, "Failed to read IMU");
         }
 
-        // Data variable
-        float flex_angles[5] = {0};
-
         // Read all sensors
         for (int i = 0; i < sizeof(sensor_configs) / sizeof(sensor_configs[0]); i++)
         {
@@ -305,7 +307,7 @@ extern "C" void app_main(void)
 
             if (is_touch)
             {
-                bool is_touch_pressed = (voltage > 1000); // TRUE if touched
+                bool is_touch_pressed = (voltage > 1000); // Touch sensor pressed threshold
 
                 uint32_t now = esp_log_timestamp(); // ms since boot
 
@@ -346,90 +348,113 @@ extern "C" void app_main(void)
             }
             else
             {
-                flex_angle[i] = flex_sensor_get_angle(channel);
+                flex_angles[i] = flex_sensor_get_angle(channel);
                 ESP_LOGI(TAG, "%s: Raw: %d, Voltage: %d mV, Angle: %.1f°",
-                         name, raw, voltage, flex_angle[i]);
+                         name, raw, voltage, flex_angles[i]);
             }
         }
+
+        // IMU 1 Data
+        sensor_data.accel1_x = imu_data_1.ax;
+        sensor_data.accel1_y = imu_data_1.ay;
+        sensor_data.accel1_z = imu_data_1.az;
+        sensor_data.gyro1_x = imu_data_1.gx;
+        sensor_data.gyro1_y = imu_data_1.gy;
+        sensor_data.gyro1_z = imu_data_1.gz;
+
+        // IMU 2 Data
+        sensor_data.accel2_x = imu_data_2.ax;
+        sensor_data.accel2_y = imu_data_2.ay;
+        sensor_data.accel2_z = imu_data_2.az;
+        sensor_data.gyro2_x = imu_data_2.gx;
+        sensor_data.gyro2_y = imu_data_2.gy;
+        sensor_data.gyro2_z = imu_data_2.gz;
+
+        // Flex Sensor Data
+        sensor_data.flex1_angle = flex_angles[0];
+        sensor_data.flex2_angle = flex_angles[1];
+        sensor_data.flex3_angle = flex_angles[2];
+        sensor_data.flex4_angle = flex_angles[3];
+        sensor_data.flex5_angle = flex_angles[4];
+        sensor_data.touch_voltage = touch_voltage;
+
+        // Metadata
+        sensor_data.timestamp = esp_log_timestamp();
 
         // Read senor data frame - 20 values of 3-axis gyro
 
-        gyro_window[curr_index][0] = imu_data_1.ax;
-        gyro_window[curr_index][1] = imu_data_1.ay;
-        gyro_window[curr_index][2] = imu_data_1.az;
+        // gyro_window[curr_index][0] = imu_data_1.ax;
+        // gyro_window[curr_index][1] = imu_data_1.ay;
+        // gyro_window[curr_index][2] = imu_data_1.az;
 
-        curr_index = (curr_index + 1) % WINDOW_SIZE;
-        if (curr_index == 0)
+        // curr_index = (curr_index + 1) % WINDOW_SIZE;
+        // if (curr_index == 0)
+        // {
+        //     window_filled = true;
+        // }
+
+        // if (window_filled)
+        // {
+        //     for (int t = 0; t < WINDOW_SIZE; t++)
+        //     {
+        //         int i = (curr_index + t) % WINDOW_SIZE;
+        //         input->data.f[t * 3 + 0] = gyro_window[i][0];
+        //         input->data.f[t * 3 + 1] = gyro_window[i][1];
+        //         input->data.f[t * 3 + 2] = gyro_window[i][2];
+        //     }
+
+        //     // Run model - If failed print and continue
+        //     if (interpreter->Invoke() != kTfLiteOk)
+        //     {
+        //         ESP_LOGI(TAG, "Model inference failed!");
+        //         continue;
+        //     }
+
+        //     // Locate most probable gesture
+        //     int max_index = 0;
+        //     float max_value = output->data.f[0];
+        //     for (int i = 1; i < output->dims->data[1]; i++)
+        //     {
+        //         if (output->data.f[i] > max_value)
+        //         {
+        //             max_value = output->data.f[i];
+        //             max_index = i;
+        //         }
+        //     }
+
+        // // Take index and convert to gesture name
+        // const char *predicted_gesture = gesture_names[max_index];
+        // ESP_LOGI(TAG, "Predicted gesture: %s (confidence=%.2f)", predicted_gesture, max_value);
+
+        if (ble_is_connected() && ble_notifications_enabled())
         {
-            window_filled = true;
-        }
 
-        if (window_filled)
-        {
-            for (int t = 0; t < WINDOW_SIZE; t++)
+            esp_err_t err = esp_ble_gatts_send_indicate(
+                current_gatts_if,
+                current_conn_id,
+                gl_profile_tab[PROFILE_A_APP_ID].char_handle,
+                SENSOR_FRAME_SIZE,
+                (uint8_t *)&sensor_data,
+                false // Notification (not indication)
+            );
+
+            if (err == ESP_OK)
             {
-                int i = (curr_index + t) % WINDOW_SIZE;
-                input->data.f[t * 3 + 0] = gyro_window[i][0];
-                input->data.f[t * 3 + 1] = gyro_window[i][1];
-                input->data.f[t * 3 + 2] = gyro_window[i][2];
-            }
-
-            // Run model - If failed print and continue
-            if (interpreter->Invoke() != kTfLiteOk)
-            {
-                ESP_LOGI(TAG, "Model inference failed!");
-                continue;
-            }
-
-            // Locate most probable gesture
-            int max_index = 0;
-            float max_value = output->data.f[0];
-            for (int i = 1; i < output->dims->data[1]; i++)
-            {
-                if (output->data.f[i] > max_value)
-                {
-                    max_value = output->data.f[i];
-                    max_index = i;
-                }
-            }
-
-            // Take index and convert to gesture name
-            const char *predicted_gesture = gesture_names[max_index];
-            ESP_LOGI(TAG, "Predicted gesture: %s (confidence=%.2f)", predicted_gesture, max_value);
-
-            if (ble_is_connected() && ble_notifications_enabled())
-            {
-                // Send a message and wait for acknowledgment
-                if (send_string_and_wait_ack("predicted_gesture"))
-                {
-                    snprintf(temp_buf, sizeof(temp_buf), "%s", predicted_gesture);
-                    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
-                    oled_print_text(7, 0, line);
-
-                    ESP_LOGI(TAG, "Playing long buzz");
-                    drv2605_play_effect(drv, DRV2605_EFFECT_LONG_BUZZ);
-
-                    ESP_LOGI("MAIN", "Message delivered successfully");
-                }
-                else
-                {
-                    snprintf(temp_buf, sizeof(temp_buf), "");
-                    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
-                    oled_print_text(7, 0, line);
-
-                    ESP_LOGE("MAIN", "Message delivery failed");
-                    ESP_LOGI(TAG, "Playing long buzz");
-                    drv2605_play_effect(drv, DRV2605_EFFECT_DOUBLE_CLICK);
-                }
+                ESP_LOGI(TAG, "Sent sensor data frame %");
             }
             else
             {
-                ESP_LOGI("MAIN", "Waiting for BLE connection and notifications enabled");
+                ESP_LOGE(TAG, "Failed to send sensor data: %s", esp_err_to_name(err));
             }
-
-            ESP_LOGI(TAG, "---");
-            vTaskDelay(pdMS_TO_TICKS(50));
         }
+        else
+        {
+            ESP_LOGI(TAG, "Waiting for BLE connection and notifications enabled");
+        }
+
+        ESP_LOGI(TAG, "---");
+        vTaskDelay(pdMS_TO_TICKS(50));
+        // }
     }
 
     drv2605_deinit(drv);
