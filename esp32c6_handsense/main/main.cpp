@@ -346,9 +346,9 @@ extern "C" void app_main(void)
             }
             else
             {
-                flex_angle[i] = flex_sensor_get_angle(channel);
+                flex_angles[i] = flex_sensor_get_angle(channel);
                 ESP_LOGI(TAG, "%s: Raw: %d, Voltage: %d mV, Angle: %.1f°",
-                         name, raw, voltage, flex_angle[i]);
+                         name, raw, voltage, flex_angles[i]);
             }
         }
 
@@ -413,7 +413,7 @@ extern "C" void app_main(void)
                 }
                 else
                 {
-                    snprintf(temp_buf, sizeof(temp_buf), "");
+                    snprintf(temp_buf, sizeof(temp_buf), "%s", "");
                     snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
                     oled_print_text(7, 0, line);
 
