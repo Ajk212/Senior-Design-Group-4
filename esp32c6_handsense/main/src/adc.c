@@ -454,27 +454,6 @@ void calibrate_all_flex_sensors(void)
                                     bent_raw[i], bent_voltage[i]);
     }
 
-    // TODO: Remove after integrating
-    snprintf(temp_buf, sizeof(temp_buf), "Status: Keep your");
-    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
-    oled_print_text(4, 0, line);
-
-    snprintf(temp_buf, sizeof(temp_buf), "fingers straight");
-    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
-    oled_print_text(5, 0, line);
-
-    ESP_LOGI(TAG, "Return all sensors to straight for verification");
-    ESP_LOGI(TAG, "Waiting 3 seconds");
-    vTaskDelay(pdMS_TO_TICKS(3000));
-
-    ESP_LOGI(TAG, "Verification readings (should be close to 0°):");
-    for (int i = 0; i < flex_count; i++)
-    {
-        adc_channel_t channel = flex_channels[i];
-        float angle = flex_sensor_get_angle(channel);
-        ESP_LOGI(TAG, "  %s: Angle=%.1f°", flex_names[i], angle);
-    }
-
     snprintf(temp_buf, sizeof(temp_buf), "Status: Flex sensors");
     snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
     oled_print_text(4, 0, line);
@@ -591,15 +570,24 @@ static float calculate_bend_angle_normalized(float normalized_value)
 // Function to calculate bend angle from voltage
 static float calculate_bend_angle_from_voltage(int voltage_mv, float voltage_straight, float voltage_bent)
 {
-    float normalized = (float)(voltage_mv - voltage_straight) /
-                       (voltage_bent - voltage_straight);
+    if (voltage_bent == voltage_straight)
+    {
+        return DEFAULT_FLEX_BENT_ANGLE; // Avoid division by zero
+    }
+
+    float normalized = (float)abs((voltage_mv - voltage_straight) /
+                                  (voltage_bent - voltage_straight));
     return calculate_bend_angle_normalized(normalized);
 }
 
 // Function to calculate bend angle from raw ADC
 static float calculate_bend_angle_from_raw(int raw_adc, float raw_straight, float raw_bent)
 {
-    float normalized = (float)(raw_adc - raw_straight) /
-                       (raw_bent - raw_straight);
+    if (raw_bent == raw_straight)
+    {
+        return DEFAULT_FLEX_BENT_ANGLE; // Avoid division by zero
+    }
+    float normalized = (float)abs((raw_adc - raw_straight) /
+                                  (raw_bent - raw_straight));
     return calculate_bend_angle_normalized(normalized);
 }

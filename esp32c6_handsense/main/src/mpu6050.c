@@ -52,7 +52,7 @@ esp_err_t mpu6050_init_sensor(uint8_t sensor_addr, const char *sensor_name)
 
     ESP_LOGI(TAG, "%s WHO_AM_I = 0x%02X", sensor_name, who_am_i);
 
-    if (who_am_i != 0x68)
+    if (who_am_i != 0x68 && who_am_i != 0x70)
     {
         ESP_LOGE(TAG, "%s not responding correctly!", sensor_name);
         return ESP_FAIL;
@@ -131,7 +131,7 @@ esp_err_t mpu6050_init_sensor_advanced(uint8_t sensor_addr, const char *sensor_n
     }
     ESP_LOGI(TAG, "%s WHO_AM_I = 0x%02X", sensor_name, who_am_i);
 
-    if (who_am_i != 0x68)
+    if (who_am_i != 0x68 && who_am_i != 0x70)
     {
         ESP_LOGE(TAG, "%s not responding correctly!", sensor_name);
         return ESP_FAIL;

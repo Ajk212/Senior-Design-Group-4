@@ -62,28 +62,28 @@ uint32_t touch_pressed_start = 0;
 bool touch_was_pressed = false;
 
 // I2C Configuration
-#define I2C_MASTER_SCL_IO 21
-#define I2C_MASTER_SDA_IO 22
+#define I2C_MASTER_SCL_IO 22
+#define I2C_MASTER_SDA_IO 21
 #define I2C_MASTER_NUM I2C_NUM_0
 #define I2C_MASTER_FREQ_HZ 1000000
-#define PULLUP GPIO_PULLUP_ENABLE
+#define PULLUP GPIO_PULLUP_DISABLE
 #define I2C_MASTER_TX_BUF_DISABLE 0
 #define I2C_MASTER_RX_BUF_DISABLE 0
 
 // ADC Configuration
-#define FLEX_1_ADC_CHANNEL ADC_CHANNEL_5
-#define FLEX_2_ADC_CHANNEL ADC_CHANNEL_3
-#define FLEX_3_ADC_CHANNEL ADC_CHANNEL_2
-#define FLEX_4_ADC_CHANNEL ADC_CHANNEL_1
-#define FLEX_5_ADC_CHANNEL ADC_CHANNEL_4
+#define RING_ADC_CHANNEL ADC_CHANNEL_5
+#define POINTER_ADC_CHANNEL ADC_CHANNEL_3
+#define THUMB_ADC_CHANNEL ADC_CHANNEL_2
+#define PINKY_ADC_CHANNEL ADC_CHANNEL_1
+#define MIDDLE_ADC_CHANNEL ADC_CHANNEL_4
 #define TOUCH_ADC_CHANNEL ADC_CHANNEL_0
 
 static const adc_sensor_config_t sensor_configs[] = {
-    {FLEX_1_ADC_CHANNEL, "Thumb", false},
-    {FLEX_2_ADC_CHANNEL, "Pointer", false},
-    {FLEX_3_ADC_CHANNEL, "Middle", false},
-    {FLEX_4_ADC_CHANNEL, "Index", false},
-    {FLEX_5_ADC_CHANNEL, "Pinky", false},
+    {THUMB_ADC_CHANNEL, "Thumb", false},
+    {POINTER_ADC_CHANNEL, "Pointer", false},
+    {MIDDLE_ADC_CHANNEL, "Middle", false},
+    {RING_ADC_CHANNEL, "Ring", false},
+    {PINKY_ADC_CHANNEL, "Pinky", false},
     {TOUCH_ADC_CHANNEL, "Touch", true},
 };
 
@@ -135,32 +135,6 @@ extern "C" void app_main(void)
 {
     esp_log_level_set("*", ESP_LOG_INFO);
     ESP_LOGI(TAG, "Starting HandSense");
-
-    // Set up initial OLED display
-    oled_init_simple();
-    oled_draw_bitmap(0, 0, icon_bluetooth_disconn_14x16, 24, 16, false);
-    oled_print_text(0, 29, "HandSense");
-    // read battery then display correct nvs stored battery state
-    oled_draw_bitmap(0, 100, icon_battery_full_24x16, 24, 16, false);
-
-    char line[22];
-    char temp_buf[25];
-
-    snprintf(temp_buf, sizeof(temp_buf), "Mode: Locked");
-    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
-    oled_print_text(3, 0, line);
-
-    snprintf(temp_buf, sizeof(temp_buf), "Status:");
-    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
-    oled_print_text(4, 0, line);
-
-    snprintf(temp_buf, sizeof(temp_buf), "Advertising BT");
-    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
-    oled_print_text(5, 0, line);
-
-    snprintf(temp_buf, sizeof(temp_buf), "Gesture:");
-    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
-    oled_print_text(6, 0, line);
 
     const tflite::Model *model = tflite::GetModel(Lite_LSTM_Test4_tflite);
 
@@ -216,6 +190,32 @@ extern "C" void app_main(void)
 
     // Test I2C communication by scanning for devices
     i2c_scanner();
+
+    // Set up initial OLED display
+    oled_init_simple();
+    oled_draw_bitmap(0, 0, icon_bluetooth_disconn_14x16, 14, 16, false);
+    oled_print_text(0, 29, "HandSense");
+    // read battery then display correct nvs stored battery state
+    oled_draw_bitmap(0, 100, icon_battery_full_24x16, 24, 16, false);
+
+    char line[22];
+    char temp_buf[25];
+
+    snprintf(temp_buf, sizeof(temp_buf), "Mode: Locked");
+    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
+    oled_print_text(3, 0, line);
+
+    snprintf(temp_buf, sizeof(temp_buf), "Status:");
+    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
+    oled_print_text(4, 0, line);
+
+    snprintf(temp_buf, sizeof(temp_buf), "Advertising BT");
+    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
+    oled_print_text(5, 0, line);
+
+    snprintf(temp_buf, sizeof(temp_buf), "Gesture:");
+    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
+    oled_print_text(6, 0, line);
 
     // Initialize MPU6050 sensor
     if (mpu6050_init_both_advanced(DLPF_CFG_4, ACCEL_FS_SEL_4G, GYRO_FS_SEL_500DPS) != ESP_OK)
@@ -277,13 +277,11 @@ extern "C" void app_main(void)
             apply_calibration(&imu_data_1, &calib_imu1);
             apply_calibration(&imu_data_2, &calib_imu2);
 
-            //     // Log to serial
-            //     // ESP_LOGI(TAG, "IMU1 Accel: X=%.2f, Y=%.2f, Z=%.2f m/s^2", accel1_x, accel1_y, accel1_z);
-            //     // ESP_LOGI(TAG, "IMU1 Gyro:  X=%.2f, Y=%.2f, Z=%.2f deg/s", gyro1_x, gyro1_y, gyro1_z);
-            //     // ESP_LOGI(TAG, "Temps: IMU1=%.1f°F", temp1_f);
-            //     // ESP_LOGI(TAG, "IMU2 Accel: X=%.2f, Y=%.2f, Z=%.2f m/s^2", accel2_x, accel2_y, accel2_z);
-            //     // ESP_LOGI(TAG, "IMU2 Gyro:  X=%.2f, Y=%.2f, Z=%.2f deg/s", gyro2_x, gyro2_y, gyro2_z);
-            //     // ESP_LOGI(TAG, "Temps: IMU2=%.1f°F", temp2_f);
+            // Log to serial
+            // ESP_LOGI(TAG, "IMU1 Accel: X=%.2f, Y=%.2f, Z=%.2f m/s^2", imu_data_1.ax, imu_data_1.ay, imu_data_1.az);
+            // ESP_LOGI(TAG, "IMU1 Gyro:  X=%.2f, Y=%.2f, Z=%.2f deg/s", imu_data_1.gx, imu_data_1.gy, imu_data_1.gz);
+            // ESP_LOGI(TAG, "IMU2 Accel: X=%.2f, Y=%.2f, Z=%.2f m/s^2", imu_data_2.ax, imu_data_2.ay, imu_data_2.az);
+            // ESP_LOGI(TAG, "IMU2 Gyro:  X=%.2f, Y=%.2f, Z=%.2f deg/s", imu_data_2.gx, imu_data_2.gy, imu_data_2.gz);
         }
         else
         {
@@ -305,7 +303,7 @@ extern "C" void app_main(void)
 
             if (is_touch)
             {
-                bool is_touch_pressed = (voltage > 1000); // TRUE if touched
+                bool is_touch_pressed = (voltage < 1350); // TRUE if touched
 
                 uint32_t now = esp_log_timestamp(); // ms since boot
 
@@ -342,13 +340,13 @@ extern "C" void app_main(void)
                     touch_was_pressed = false;
                 }
 
-                ESP_LOGI(TAG, "%s: Raw: %d, Voltage: %d mV", name, raw, voltage);
+                // ESP_LOGI(TAG, "%s: Raw: %d, Voltage: %d mV", name, raw, voltage);
             }
             else
             {
                 flex_angles[i] = flex_sensor_get_angle(channel);
-                ESP_LOGI(TAG, "%s: Raw: %d, Voltage: %d mV, Angle: %.1f°",
-                         name, raw, voltage, flex_angles[i]);
+                // ESP_LOGI(TAG, "%s: Raw: %d, Voltage: %d mV, Angle: %.1f°",
+                //          name, raw, voltage, flex_angles[i]);
             }
         }
 
@@ -400,7 +398,7 @@ extern "C" void app_main(void)
             if (ble_is_connected() && ble_notifications_enabled())
             {
                 // Send a message and wait for acknowledgment
-                if (send_string_and_wait_ack("predicted_gesture"))
+                if (send_string_and_wait_ack(predicted_gesture))
                 {
                     snprintf(temp_buf, sizeof(temp_buf), "%s", predicted_gesture);
                     snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
