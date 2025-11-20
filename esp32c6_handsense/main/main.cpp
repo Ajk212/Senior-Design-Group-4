@@ -8,6 +8,9 @@ extern "C"
 #include "freertos/event_groups.h"
 #include "driver/gpio.h"
 #include "esp_log.h"
+#include "nvs_flash.h"
+#include "nvs.h"
+#include "esp_timer.h"
 #include "esp_system.h"
 
 #include "imu_frame.h"
@@ -65,30 +68,43 @@ uint32_t touch_pressed_start = 0;
 bool touch_was_pressed = false;
 
 // I2C Configuration
-#define I2C_MASTER_SCL_IO 21
-#define I2C_MASTER_SDA_IO 22
+#define I2C_MASTER_SCL_IO 22
+#define I2C_MASTER_SDA_IO 21
 #define I2C_MASTER_NUM I2C_NUM_0
 #define I2C_MASTER_FREQ_HZ 1000000
-#define PULLUP GPIO_PULLUP_ENABLE
+#define PULLUP GPIO_PULLUP_DISABLE
 #define I2C_MASTER_TX_BUF_DISABLE 0
 #define I2C_MASTER_RX_BUF_DISABLE 0
 
 // ADC Configuration
-#define FLEX_1_ADC_CHANNEL ADC_CHANNEL_5
-#define FLEX_2_ADC_CHANNEL ADC_CHANNEL_3
-#define FLEX_3_ADC_CHANNEL ADC_CHANNEL_2
-#define FLEX_4_ADC_CHANNEL ADC_CHANNEL_1
-#define FLEX_5_ADC_CHANNEL ADC_CHANNEL_4
-#define TOUCH_ADC_CHANNEL ADC_CHANNEL_0
+#define THUMB_ADC_CHANNEL ADC_CHANNEL_2
+#define POINTER_ADC_CHANNEL ADC_CHANNEL_3
+#define MIDDLE_ADC_CHANNEL ADC_CHANNEL_4
+#define RING_ADC_CHANNEL ADC_CHANNEL_5
+#define PINKY_ADC_CHANNEL ADC_CHANNEL_6
+#define TOUCH_ADC_CHANNEL ADC_CHANNEL_1
 
 static const adc_sensor_config_t sensor_configs[] = {
-    {FLEX_1_ADC_CHANNEL, "Thumb", false},
-    {FLEX_2_ADC_CHANNEL, "Pointer", false},
-    {FLEX_3_ADC_CHANNEL, "Middle", false},
-    {FLEX_4_ADC_CHANNEL, "Index", false},
-    {FLEX_5_ADC_CHANNEL, "Pinky", false},
+    {THUMB_ADC_CHANNEL, "Thumb", false},
+    {POINTER_ADC_CHANNEL, "Pointer", false},
+    {MIDDLE_ADC_CHANNEL, "Middle", false},
+    {RING_ADC_CHANNEL, "Ring", false},
+    {PINKY_ADC_CHANNEL, "Pinky", false},
     {TOUCH_ADC_CHANNEL, "Touch", true},
 };
+
+// Battery variables
+static constexpr int BATTERY_CAPACITY_MAH = 1000;
+static constexpr int AVERAGE_CURRENT_MA = 100;    // measure or estimate
+static constexpr int PERSIST_INTERVAL_MS = 30000; // store every 30s
+
+struct BatteryRuntime
+{
+    uint64_t boot_offset_ms = 0;
+    uint64_t charge_time_ms = 0;
+};
+
+static BatteryRuntime batt;
 
 // Initialize I2C master
 esp_err_t i2c_master_init(void)
@@ -134,36 +150,110 @@ void i2c_scanner(void)
     ESP_LOGI(TAG, "I2C scan complete");
 }
 
+// Battery and nvs functions
+static void nvs_load_runtime()
+{
+    nvs_handle_t h;
+    esp_err_t err = nvs_open("battery", NVS_READONLY, &h);
+    if (err != ESP_OK)
+    {
+        ESP_LOGW(TAG, "First boot or NVS missing.");
+        batt.boot_offset_ms = 0;
+        batt.charge_time_ms = esp_timer_get_time() / 1000ULL;
+        return;
+    }
+    nvs_get_u64(h, "boot_off", &batt.boot_offset_ms);
+    nvs_get_u64(h, "charge_ms", &batt.charge_time_ms);
+    nvs_close(h);
+
+    ESP_LOGI(TAG, "Loaded: boot_off=%llu ms, charge=%llu ms",
+             batt.boot_offset_ms, batt.charge_time_ms);
+}
+
+static void nvs_save_runtime(uint64_t now_ms)
+{
+    nvs_handle_t h;
+    ESP_ERROR_CHECK(nvs_open("battery", NVS_READWRITE, &h));
+
+    ESP_ERROR_CHECK(nvs_set_u64(h, "boot_off", batt.boot_offset_ms));
+    ESP_ERROR_CHECK(nvs_set_u64(h, "charge_ms", batt.charge_time_ms));
+
+    ESP_ERROR_CHECK(nvs_commit(h));
+    nvs_close(h);
+}
+
+static float battery_get_soc()
+{
+    uint64_t now_ms = esp_timer_get_time() / 1000ULL;
+
+    uint64_t uptime_ms = batt.boot_offset_ms + (now_ms - batt.charge_time_ms);
+    float hours = uptime_ms / 3600000.0f;
+
+    float used = hours * AVERAGE_CURRENT_MA;
+    float soc = 100.0f * (1.0f - used / BATTERY_CAPACITY_MAH);
+
+    if (soc < 0)
+        soc = 0;
+    if (soc > 100)
+        soc = 100;
+
+    return soc;
+}
+
+const uint8_t *battery_icon_from_soc(int soc)
+{
+    if (soc >= 95)
+        return icon_battery_full_24x16;
+    else if (soc >= 90)
+        return icon_battery_90_24x16;
+    else if (soc >= 80)
+        return icon_battery_80_24x16;
+    else if (soc >= 70)
+        return icon_battery_70_24x16;
+    else if (soc >= 60)
+        return icon_battery_60_24x16;
+    else if (soc >= 50)
+        return icon_battery_50_24x16;
+    else if (soc >= 40)
+        return icon_battery_40_24x16;
+    else if (soc >= 30)
+        return icon_battery_30_24x16;
+    else if (soc >= 20)
+        return icon_battery_20_24x16;
+    else if (soc >= 10)
+        return icon_battery_10_24x16;
+    else
+        return icon_battery_5_24x16;
+}
+
+static void battery_update_task(void *)
+{
+    uint64_t last_save = 0;
+
+    while (true)
+    {
+        float soc = battery_get_soc();
+        const uint8_t *icon = battery_icon_from_soc(soc);
+        oled_draw_bitmap(0, 100, icon, 24, 16, false);
+        ESP_LOGI(TAG, "Estimated SoC: %.1f%%", soc);
+
+        uint64_t now_ms = esp_timer_get_time() / 1000ULL;
+
+        if (now_ms - last_save > PERSIST_INTERVAL_MS)
+        {
+            batt.boot_offset_ms += PERSIST_INTERVAL_MS;
+            nvs_save_runtime(now_ms);
+            last_save = now_ms;
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(5000)); // update every 5 sec
+    }
+}
+
 extern "C" void app_main(void)
 {
     esp_log_level_set("*", ESP_LOG_INFO);
     ESP_LOGI(TAG, "Starting HandSense");
-
-    // Set up initial OLED display
-    oled_init_simple();
-    oled_draw_bitmap(0, 0, icon_bluetooth_disconn_14x16, 24, 16, false);
-    oled_print_text(0, 29, "HandSense");
-    // read battery then display correct nvs stored battery state
-    oled_draw_bitmap(0, 100, icon_battery_full_24x16, 24, 16, false);
-
-    char line[22];
-    char temp_buf[25];
-
-    snprintf(temp_buf, sizeof(temp_buf), "Mode: Locked");
-    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
-    oled_print_text(3, 0, line);
-
-    snprintf(temp_buf, sizeof(temp_buf), "Status:");
-    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
-    oled_print_text(4, 0, line);
-
-    snprintf(temp_buf, sizeof(temp_buf), "Advertising BT");
-    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
-    oled_print_text(5, 0, line);
-
-    snprintf(temp_buf, sizeof(temp_buf), "Gesture:");
-    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
-    oled_print_text(6, 0, line);
 
     const tflite::Model *model = tflite::GetModel(Lite_LSTM_Test4_tflite);
 
@@ -213,12 +303,32 @@ extern "C" void app_main(void)
     // Initialize Bluetooth
     ble_init();
 
+    // Battery task and NVS
+    nvs_load_runtime();
+
     // Initialize I2C
     ESP_ERROR_CHECK(i2c_master_init());
     ESP_LOGI(TAG, "I2C initialized successfully");
 
     // Test I2C communication by scanning for devices
     i2c_scanner();
+
+    // Set up initial OLED display
+    oled_init_simple();
+    oled_draw_bitmap(0, 0, icon_bluetooth_disconn_14x16, 14, 16, false);
+    oled_print_text_simple(0, 20, "HandSense");
+    float soc_percent = battery_get_soc();
+    const uint8_t *icon = battery_icon_from_soc(soc_percent);
+    oled_draw_bitmap(0, 100, icon, 24, 16, false);
+
+    char buf[21];
+    snprintf(buf, sizeof(buf), "Mode: %s", model_modes[current_mode]);
+    oled_print_text(3, 0, buf);
+    oled_print_text(4, 0, "Status:");
+    oled_print_text(5, 0, "Advertising BT");
+    oled_print_text(6, 0, "Gesture:");
+
+    xTaskCreate(battery_update_task, "batt_task", 4096, nullptr, 5, nullptr);
 
     // Initialize MPU6050 sensor
     if (mpu6050_init_both_advanced(DLPF_CFG_4, ACCEL_FS_SEL_4G, GYRO_FS_SEL_500DPS) != ESP_OK)
@@ -251,13 +361,8 @@ extern "C" void app_main(void)
 
     ESP_LOGI(TAG, "All devices initialized, starting readings...");
 
-    snprintf(temp_buf, sizeof(temp_buf), "Status:");
-    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
-    oled_print_text(4, 0, line);
-
-    snprintf(temp_buf, sizeof(temp_buf), "Ready for gestures");
-    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
-    oled_print_text(5, 0, line);
+    oled_print_text(4, 0, "Status:");
+    oled_print_text(5, 0, "Ready for gestures");
 
     // Data variables
     imu_data_t imu_data_1, imu_data_2;
@@ -282,20 +387,18 @@ extern "C" void app_main(void)
             apply_calibration(&imu_data_1, &calib_imu1);
             apply_calibration(&imu_data_2, &calib_imu2);
 
-            //     // Log to serial
-            //     // ESP_LOGI(TAG, "IMU1 Accel: X=%.2f, Y=%.2f, Z=%.2f m/s^2", accel1_x, accel1_y, accel1_z);
-            //     // ESP_LOGI(TAG, "IMU1 Gyro:  X=%.2f, Y=%.2f, Z=%.2f deg/s", gyro1_x, gyro1_y, gyro1_z);
-            //     // ESP_LOGI(TAG, "Temps: IMU1=%.1f°F", temp1_f);
-            //     // ESP_LOGI(TAG, "IMU2 Accel: X=%.2f, Y=%.2f, Z=%.2f m/s^2", accel2_x, accel2_y, accel2_z);
-            //     // ESP_LOGI(TAG, "IMU2 Gyro:  X=%.2f, Y=%.2f, Z=%.2f deg/s", gyro2_x, gyro2_y, gyro2_z);
-            //     // ESP_LOGI(TAG, "Temps: IMU2=%.1f°F", temp2_f);
+            // Log to serial
+            // ESP_LOGI(TAG, "IMU1 Accel: X=%.2f, Y=%.2f, Z=%.2f m/s^2", imu_data_1.ax, imu_data_1.ay, imu_data_1.az);
+            // ESP_LOGI(TAG, "IMU1 Gyro:  X=%.2f, Y=%.2f, Z=%.2f deg/s", imu_data_1.gx, imu_data_1.gy, imu_data_1.gz);
+            // ESP_LOGI(TAG, "IMU2 Accel: X=%.2f, Y=%.2f, Z=%.2f m/s^2", imu_data_2.ax, imu_data_2.ay, imu_data_2.az);
+            // ESP_LOGI(TAG, "IMU2 Gyro:  X=%.2f, Y=%.2f, Z=%.2f deg/s", imu_data_2.gx, imu_data_2.gy, imu_data_2.gz);
         }
         else
         {
             ESP_LOGE(TAG, "Failed to read IMU");
         }
 
-        // Read all sensors
+        // Read all adc sensors
         for (int i = 0; i < sizeof(sensor_configs) / sizeof(sensor_configs[0]); i++)
         {
             adc_channel_t channel = sensor_configs[i].channel;
@@ -307,7 +410,7 @@ extern "C" void app_main(void)
 
             if (is_touch)
             {
-                bool is_touch_pressed = (voltage > 1000); // Touch sensor pressed threshold
+                bool is_touch_pressed = (voltage < 1350); // Touch sensor pressed threshold
 
                 uint32_t now = esp_log_timestamp(); // ms since boot
 
@@ -328,10 +431,8 @@ extern "C" void app_main(void)
                             ESP_LOGI(TAG, "Model Mode Toggled to %s", model_modes[current_mode]);
 
                             // Update OLED
-
-                            snprintf(temp_buf, sizeof(temp_buf), "Mode: %s", model_modes[current_mode]);
-                            snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
-                            oled_print_text(3, 0, line);
+                            snprintf(buf, sizeof(buf), "Mode: %s", model_modes[current_mode]);
+                            oled_print_text(3, 0, buf);
 
                             // Prevent repeated toggles while still pressed
                             touch_pressed_start = now + 100000;
@@ -428,28 +529,32 @@ extern "C" void app_main(void)
 
         if (ble_is_connected() && ble_notifications_enabled())
         {
-
-            esp_err_t err = esp_ble_gatts_send_indicate(
-                current_gatts_if,
-                current_conn_id,
-                gl_profile_tab[PROFILE_A_APP_ID].char_handle,
-                SENSOR_FRAME_SIZE,
-                (uint8_t *)&sensor_data,
-                false // Notification (not indication)
-            );
-
-            if (err == ESP_OK)
+            // Send a message and wait for acknowledgment
+            if (send_string_and_wait_ack("predicted_gesture"))
             {
-                ESP_LOGI(TAG, "Sent sensor data frame %");
+                snprintf(temp_buf, sizeof(temp_buf), "%s", predicted_gesture);
+                snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
+                oled_print_text(7, 0, line);
+
+                ESP_LOGI(TAG, "Playing long buzz");
+                drv2605_play_effect(drv, DRV2605_EFFECT_LONG_BUZZ);
+
+                ESP_LOGI("MAIN", "Message delivered successfully");
             }
             else
             {
-                ESP_LOGE(TAG, "Failed to send sensor data: %s", esp_err_to_name(err));
+                snprintf(temp_buf, sizeof(temp_buf), "");
+                snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
+                oled_print_text(7, 0, line);
+
+                ESP_LOGE("MAIN", "Message delivery failed");
+                ESP_LOGI(TAG, "Playing long buzz");
+                drv2605_play_effect(drv, DRV2605_EFFECT_DOUBLE_CLICK);
             }
         }
         else
         {
-            ESP_LOGI(TAG, "Waiting for BLE connection and notifications enabled");
+            ESP_LOGI("MAIN", "Waiting for BLE connection and notifications enabled");
         }
 
         ESP_LOGI(TAG, "---");

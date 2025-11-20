@@ -160,6 +160,26 @@ void oled_write_char(char c)
 void oled_print_text(uint8_t page, uint8_t column, const char *text)
 {
     oled_set_cursor(page, column);
+
+    // Print at most 20 characters
+    int i;
+    for (i = 0; i < 20 && text[i] != '\0'; i++)
+    {
+        oled_write_char(text[i]);
+    }
+
+    // Pad with spaces if shorter than 20
+    while (i < 20)
+    {
+        oled_write_char(' ');
+        i++;
+    }
+}
+
+void oled_print_text_simple(uint8_t page, uint8_t column, const char *text)
+{
+    oled_set_cursor(page, column);
+
     for (int i = 0; text[i] != '\0'; i++)
     {
         oled_write_char(text[i]);
@@ -213,46 +233,25 @@ void oled_update_display(float accel1_x, float accel1_y, float accel1_z,
                          float gyro2_x, float gyro2_y, float gyro2_z,
                          float temp1, float temp2)
 {
-    char line[22];
-    char temp_buf[25];
+    char buf[21];
 
-    // Line 0: Header
-    snprintf(line, sizeof(line), "Dual IMU Monitor");
-    oled_print_text(0, 0, line);
+    snprintf(buf, sizeof(buf), "Dual IMU Monitor");
+    oled_print_text(0, 0, buf);
 
-    // Line 1: IMU1 Acceleration
-    snprintf(temp_buf, sizeof(temp_buf), "A1:%.1f,%.1f,%.1f", accel1_x, accel1_y, accel1_z);
-    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
-    oled_print_text(1, 0, line);
+    snprintf(buf, sizeof(buf), "A1:%.1f,%.1f,%.1f", accel1_x, accel1_y, accel1_z);
+    oled_print_text(1, 0, buf);
 
-    // Line 2: IMU1 Gyroscope
-    snprintf(temp_buf, sizeof(temp_buf), "G1:%.1f,%.1f,%.1f", gyro1_x, gyro1_y, gyro1_z);
-    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
-    oled_print_text(2, 0, line);
+    snprintf(buf, sizeof(buf), "G1:%.1f,%.1f,%.1f", gyro1_x, gyro1_y, gyro1_z);
+    oled_print_text(2, 0, buf);
 
-    // Line 3: IMU2 Acceleration
-    snprintf(temp_buf, sizeof(temp_buf), "A2:%.1f,%.1f,%.1f", accel2_x, accel2_y, accel2_z);
-    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
-    oled_print_text(3, 0, line);
+    snprintf(buf, sizeof(buf), "A2:%.1f,%.1f,%.1f", accel2_x, accel2_y, accel2_z);
+    oled_print_text(3, 0, buf);
 
-    // Line 4: IMU2 Gyroscope
-    snprintf(temp_buf, sizeof(temp_buf), "G2:%.1f,%.1f,%.1f", gyro2_x, gyro2_y, gyro2_z);
-    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
-    oled_print_text(4, 0, line);
+    snprintf(buf, sizeof(buf), "G2:%.1f,%.1f,%.1f", gyro2_x, gyro2_y, gyro2_z);
+    oled_print_text(4, 0, buf);
 
-    // Line 5: Temperatures
-    snprintf(temp_buf, sizeof(temp_buf), "T1:%.1fF T2:%.1fF", temp1, temp2);
-    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
-    oled_print_text(5, 0, line);
-
-    // Line 6: Status
-    static int counter = 0;
-    snprintf(temp_buf, sizeof(temp_buf), "Update: %d", counter++);
-    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
-    oled_print_text(6, 0, line);
-
-    snprintf(line, sizeof(line), "\%-20.20s", "");
-    oled_print_text(7, 0, line);
+    snprintf(buf, sizeof(buf), "T1:%.1fF T2:%.1fF", temp1, temp2);
+    oled_print_text(5, 0, buf);
 }
 
 // Draw bitmap with inversion option

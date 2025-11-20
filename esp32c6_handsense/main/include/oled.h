@@ -19,7 +19,6 @@ static const uint8_t icon_bluetooth_disconn_14x16[] = {
     0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0xf9,
     0x40, 0x20, 0x12, 0x0c, 0x00, 0x00, 0x00};
 
-// 24×16 Battery Full Icon
 static const uint8_t icon_battery_full_24x16[] = {
     0xE0, 0x10, 0x10, 0x1C, 0x02, 0xFA, 0x02, 0xFA,
     0x02, 0xFA, 0x02, 0xFA, 0x02, 0xFA, 0x02, 0xFA,
@@ -114,6 +113,7 @@ void oled_clear_screen(void);
 void oled_set_cursor(uint8_t page, uint8_t column);
 void oled_write_char(char c);
 void oled_print_text(uint8_t page, uint8_t column, const char *text);
+void oled_print_text_simple(uint8_t page, uint8_t column, const char *text);
 void oled_update_display(float accel1_x, float accel1_y, float accel1_z,
                          float accel2_x, float accel2_y, float accel2_z,
                          float gyro1_x, float gyro1_y, float gyro1_z,

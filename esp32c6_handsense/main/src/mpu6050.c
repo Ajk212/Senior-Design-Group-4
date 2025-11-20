@@ -52,7 +52,7 @@ esp_err_t mpu6050_init_sensor(uint8_t sensor_addr, const char *sensor_name)
 
     ESP_LOGI(TAG, "%s WHO_AM_I = 0x%02X", sensor_name, who_am_i);
 
-    if (who_am_i != 0x68)
+    if (who_am_i != 0x68 && who_am_i != 0x70)
     {
         ESP_LOGE(TAG, "%s not responding correctly!", sensor_name);
         return ESP_FAIL;
@@ -65,8 +65,8 @@ esp_err_t mpu6050_init_sensor(uint8_t sensor_addr, const char *sensor_name)
 // Initialize both MPU6050 sensors
 esp_err_t mpu6050_init_both(void)
 {
-    esp_err_t ret1 = mpu6050_init_sensor(MPU6050_I2C_ADDR_1, "IMU_1");
-    esp_err_t ret2 = mpu6050_init_sensor(MPU6050_I2C_ADDR_2, "IMU_2");
+    esp_err_t ret1 = mpu6050_init_sensor(MPU6050_I2C_ADDR_1, "Main IMU");
+    esp_err_t ret2 = mpu6050_init_sensor(MPU6050_I2C_ADDR_2, "Index IMU");
     return (ret1 == ESP_OK && ret2 == ESP_OK) ? ESP_OK : ESP_FAIL;
 }
 
@@ -131,7 +131,7 @@ esp_err_t mpu6050_init_sensor_advanced(uint8_t sensor_addr, const char *sensor_n
     }
     ESP_LOGI(TAG, "%s WHO_AM_I = 0x%02X", sensor_name, who_am_i);
 
-    if (who_am_i != 0x68)
+    if (who_am_i != 0x68 && who_am_i != 0x70)
     {
         ESP_LOGE(TAG, "%s not responding correctly!", sensor_name);
         return ESP_FAIL;
@@ -280,11 +280,9 @@ esp_err_t mpu6050_calibrate_both_sensor(calibration_data_t *calib_1, calibration
 {
     ESP_LOGI(TAG, "Starting calibration - keep sensor stationary");
 
-    char line[22];
-    char temp_buf[25];
-    snprintf(temp_buf, sizeof(temp_buf), "Keep glove at rest");
-    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
-    oled_print_text(5, 0, line);
+    char buf[21];
+    snprintf(buf, sizeof(buf), "Keep glove at rest");
+    oled_print_text(5, 0, buf);
 
     float a1x_sum = 0, a1y_sum = 0, a1z_sum = 0;
     float g1x_sum = 0, g1y_sum = 0, g1z_sum = 0;
@@ -337,9 +335,8 @@ esp_err_t mpu6050_calibrate_both_sensor(calibration_data_t *calib_1, calibration
     calib_1->sample_count = num_samples;
     calib_2->sample_count = num_samples;
 
-    snprintf(temp_buf, sizeof(temp_buf), "Calibration complete");
-    snprintf(line, sizeof(line), "\%-20.20s", temp_buf);
-    oled_print_text(5, 0, line);
+    snprintf(buf, sizeof(buf), "Calibration complete");
+    oled_print_text(5, 0, buf);
 
     ESP_LOGI(TAG, "Calibration complete");
     ESP_LOGI(TAG, "Accel bias for Sensor 1: %.3f, %.3f, %.3f",
