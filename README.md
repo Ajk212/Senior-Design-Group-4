@@ -5,3 +5,5 @@ HandSense is a embedded system specializing in recognizing hand gestures and cla
 
 
 ![A2B34CBA_IMG_4019](https://github.com/user-attachments/assets/27eac8f0-1db6-42e1-adb4-e391a1b15e97)
+
+For a detailed description please view the completed report.
