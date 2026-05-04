@@ -145,12 +145,17 @@ A custom GATT service was built for bidirectional Bluetooth communication. The B
 During model training, a data pipeline was set up to stream the sensor data to client for recording gesture datasets to train the model. The data was sent as a frame including all the sensor readings in that instance with the timestamp and metadata. This allowed for more efficient training times. The custom Bluetooth service allowed for this setup.
 
 Figure 9: Sequence Diagram for Client BLE Connection to HandSense
- 
+ <img width="1008" height="597" alt="image" src="https://github.com/user-attachments/assets/d112a625-aa02-4751-8ef7-e2d4ae2c43bb" />
+
 Figure 10: Sequence Diagram for Gesture Processing Loop
+<img width="1042" height="447" alt="image" src="https://github.com/user-attachments/assets/71907b68-e622-4300-b0f4-57406b9bf85e" />
+
 5.2.3 Software
 The Software system primary consisted of two subsystems: machine learning model and PC client. The system level flowchart for the software, including firmware operations, is shown in figure 11. The program housed on the PC receives signals sent by the glove via Bluetooth and executes the desired command. Given the pre-selected library of gestures, a user has the ability to configure certain gestures to execute custom commands. The user-friendly interface allows for quick and easy management, while keeping the strain on the system resources as light as possible.
 
 Figure 11: Software system level flowchart
+<img width="956" height="316" alt="image" src="https://github.com/user-attachments/assets/24a75cd7-1124-4814-b1dc-923788c2af50" />
+
 5.2.3.1 Machine Learning Model
 For gesture recognition and command execution, a 1-D neural network was implemented onto the ESP32-C6 microcontroller. This neural network is lightweight and fast, although it does not carry the same levels of accuracy and memory as the LSTM model used in initial stages of the project’s development. This neural network excels in Human Activity Recognition (HAR), meaning that the model is capable of observing real-time sensor data to make informed predictions regarding gestures performed.  The major drawback of this neural network is its limited precision and memory. These limitations posed a potential issue, threatening to reduce the number of available gestures to allow for greater accuracy. Evaluating the model revealed that the defined set of 15 gestures retained high accuracy (around 95%). This model was concluded to be the best choice for our prototype, allowing us to maximize performance while maintaining a small file size so the model could be formatted into a TensorFlow-Micro Lite file. This format conversion allowed the model to be placed onto the glove’s onboard ESP32-C6 processor and run all predictions locally, reducing latency and improving user experience. Onboard the glove, the model is presented with data from each of the five flex sensors and two IMUs. After a sliding window is filled with data, it tries to generate a prediction by comparing the received data against the data used to conduct its training. If the model predicts a gesture with a certainty above 85%, it classifies it as performed, sending the gestures ID over Bluetooth to the PC client. After this data is sent, it waits for a return signal, marking successful communication between devices.
 
@@ -159,6 +164,8 @@ The PC client used in the final design consisted of two key parts, a frontend an
 
 
 Figure 12 – PC Client GUI
+<img width="620" height="858" alt="image" src="https://github.com/user-attachments/assets/8bad403c-e62d-4471-bdf6-b6f5f0352079" />
+
 
 The second part of the PC client is the backend system. This part of the system facilitates all communication and command execution for HandSense. Using a Bluetooth Low-Energy protocol, the PC client is capable of sending and receiving data from the device with minimal latency. After receiving a predicted gesture from the device, the backend communicates with the frontend system, checking the received gesture against a table of bound commands. After acquiring the associated command, logic is conducted to properly execute the command and reply to the glove with an acknowledgment statement, signifying that the command was successfully completed and that it is ready to receive the next gesture identified. This backend system remains lightweight along with the frontend, ensuring minimal delay in gesture execution and minimal system impact, allowing for long a duration of use without any issue.
 5.3 Sustainability Considerations  
@@ -198,25 +205,33 @@ Result: 85%
 This portion of the testing criteria was performed using a multimeter. Output voltage from the instrument amplifier connected to a flex sensor incorporated into a Wheatstone bridge was measured at different bending angles of the flex sensor. Results showing the relationship between bend angle and voltage to be used in the logic of the microcontroller to detect finger movements are shown in figure 13.
 
 Figure 13: Flex sensor bend angle against voltage reading.
+<img width="526" height="218" alt="image" src="https://github.com/user-attachments/assets/f6452ba3-d0b8-43c6-8855-d18f0e1e20d0" />
+
 The results showed a semi-linear function that could approximate the behavior of sensor readings, thus, finger movements. However, each flex sensor demonstrated distinct characteristics and defining a precise model to accurately predict the finger bend angles proved to be difficult with only the flex sensor. Therefore, the software used sensor readings to simply determine whether the finger has been bent or not. 
 The output voltage from the touch sensor was similarly measured. However, the touch sensor did not require accurate reading of the data as it would act primarily as a button. Therefore, the team only confirmed that a pinching movement of the finger generated enough force required to activate a response.
 The IMU signal output is critical as it would carry the sensor readings which determine the hand and index finger movements. To test the signal integrity from the IMU sensor circuit, the serial communication signal from the IMU IC was converted into acceleration readings and plotted onto a 3-D plot. By observing the changes in acceleration matching the movement of the IMU IC, the team confirmed signal integrity of the chip as shown in figure 14. With signal integrity confirmed, data was collected while moving the IMU to evaluate the 3-axis acceleration and rotational motion to measure the IMU’s sensitivity and to obtain the drift. With this data, the team calibrated the  drift of the IMU. 
 
-Figure 14: MPU-6500 IMU 3-axis acceleration reading.
+Figure 14: MPU-6500 IMU 3-axis acceleration reading
+<img width="1166" height="590" alt="image" src="https://github.com/user-attachments/assets/251401c1-5a95-4ba8-8661-881ecf03b8a2" />
+
 6.3.2 Unit Tests of Haptic Motor
 To control the DC motor for different haptic feedback responses, the PWM signal from the microcontroller was measured using an oscilloscope and the current passing to the DC motor would be measured using a multimeter. DC motor responded to varying levels of duty ratios evaluated and the team was able to observe different haptic feedback strength by controlling the duty ratios. The results are shown in figure 15. 
 
 Figure 15: Current draw given different PWM duty cycles sent to the Motor Driver IC
+<img width="687" height="545" alt="image" src="https://github.com/user-attachments/assets/391ef829-65df-478c-bb36-ddccd35df6f1" />
 
 6.3.3 Unit Tests for Voltage Regulator
 The linear voltage regulator was assessed on a breadboard by varying input voltages from a voltage source and measuring the output voltage using a multimeter. The decoupling capacitances used for smoothing the output voltages were adjusted during this test to ensure output voltage is within ±5% of 3.3V given a DC voltage input from 5 to 15V. The test results with a range of DC inputs are shown in Figure 16, confirming the voltage divider operating as intended throughout the designed input voltage from the USB connector.
 
 Figure 16: Voltage regulator output
+<img width="545" height="195" alt="image" src="https://github.com/user-attachments/assets/c9c8b1e2-4994-4509-92ae-5bc4577e7a37" />
 
 6.3.4 Unit Tests for Battery
 Battery charging and recharging tests were repeated to ensure safe operations through multiple charging / recharging cycles. On the test PCB, the battery charging and battery protection circuit was assembled to test charging and discharging of the Li-Po battery prior to assembling the final PCB. The battery voltage was monitored using a multimeter while discharge. The battery was then drained using the device without connecting to the USB connector to the cutoff limit voltage to ensure if the cutoff voltage limiting IC would function when the charge drops below 6V. The current draw of the battery was also measured to estimate the average current draw of the system, which was used to compute the remaining battery life. Figure 17 shows the current draw of the system over  a 2-minute time frame. The peaks indicate when the ESP32-C6 was performing a 1D-CNN inference and subsequently transmitting commands via Bluetooth. With an average current draw of approximately 100mA and battery capacity of 900mAh, it was determined that the system had sufficient battery capacity to operate over 8 hours without recharge. 
 
 Figure 17: Current Draw of system over 5 minutes of operation
+<img width="989" height="590" alt="image" src="https://github.com/user-attachments/assets/96bede7c-2302-40f4-9390-51553fb254a5" />
+
 6.4 Software Systems
 To ensure total software system functionality, testing was conducted at each major design stage. The main evaluation criteria for this system will be the model’s gesture recognition accuracy. Maintaining a high accuracy ensures improved user experience along with higher efficiency within the codebase.
 6.2.1 Preliminary Model Testing
@@ -225,12 +240,16 @@ While the development of the hardware was underway, preliminary testing focused 
 The final testing phase required full hardware and software integration, marking the transition of the project into its fully functional state. At this stage, the machine learning model was compressed into a lightweight header file utilized by the ESP32-C6's flashed code. Once the model was integrated into the system, sensor data was able to be gathered and stored into grouped files for model training. The testing process was conducted by gathering 5 files per defined gesture, followed by retraining the model with the updated sensor information. Each time the model was trained, 20% of the files were separated and used to verify the model's accuracy via testing. The model’s accuracy was noted at each stage, and if it remained below an acceptable threshold, the cycle repeated, where 5 more datasets per gesture were recorded along with the model being trained again. 
 
 Figure 18 – Accuracy results at each training stage
+<img width="1476" height="859" alt="image" src="https://github.com/user-attachments/assets/ce8e4bfa-2c74-41fb-b022-529cc92109fd" />
+
 Figure 18 displays the progression of model accuracy as additional data was incorporated. During testing, we observed that the LSTM model’s file size increased with the growing number of gestures, eventually exceeding the memory constraints of the ESP32-C6. Because the microcontroller could not store the expanded LSTM model, we transitioned to a 1-Dimensional Convolutional Neural Network. While the 1D-CNN maintained a manageable file size suitable for the device, this change introduced a slight reduction in accuracy—a trade-off we determined to be acceptable for deployment on the hardware.
 For comparison purposes, both models were trained to the full dataset size of 390 gesture samples (30 training files per gesture). At this final stage, the LSTM model achieved 98% accuracy, while the 1D-CNN achieved 95%. Both results exceeded our performance target of 75% gesture-recognition accuracy. Therefore, the 1D-CNN model was selected for deployment, and the gesture-detection subsystem was considered ready for full integration with the rest of the device.
 6.2.4 Latency Testing
 The primary objective of the latency test was to ensure that the HandSense system’s “gesture-to-action” latency was low enough that the user would have a smooth interaction while using the glove. The testing was done after final software and hardware integration. The average latency that we recorded through the serial monitor from sensor data reading to sending the model inference gesture to the glove receiving the acknowledgement was 111 milliseconds as shown in figure 19. This value was collected from 20 samples. It was found that the biggest delay in latency was the Bluetooth communication between the gloves and the PC. The latency could be improved if the Bluetooth protocol was updated to use the faster Bluedroid Bluetooth stack instead of using the lighter weight NimBLE stack.
 
 Figure 19 – Average Latency at Each Point
+<img width="388" height="77" alt="image" src="https://github.com/user-attachments/assets/4a34e69d-a905-44b1-819f-0dd9295ee2c4" />
+
 7. Team
 This team was composed of one electrical engineer (Calvin Fetzek) and two computer engineers (Aaron Kuchta and Yuheng Lin). Each member possesses a unique
 skill set that will be applied to the most relevant portion of this project. Calvin will be primarily concerned with hardware such as the glove, enclosure, and PCB design and hardware power management for the system including the battery charging circuit. Yuheng will be focused on the firmware including sensor reading, OLED display, haptic drivers and the ESP32 C6 microcontroller. Aaron’s responsibilities will be focused on the creation of a PC software package capable of connecting with the glove, along with the development of a LSTM machine learning model to conduct gesture recognition and command execution. 
